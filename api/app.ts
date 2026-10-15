@@ -459,12 +459,17 @@ export function createApp(opts: AppOptions) {
   }
 
   const devPage = dev ? readFileSync(new URL('./dev.html', import.meta.url)) : null;
+  const devGraph = dev ? readFileSync(new URL('./dev-graph.html', import.meta.url)) : null;
 
   /** Node HTTP handler. */
   return async function serve(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
+    if (req.method === 'GET' && url.pathname === '/dev/graph' && devGraph) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(devGraph);
+    }
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/dev')) {
       if (!devPage) { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('OSO API. See contract/openapi.yaml.\n'); }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });

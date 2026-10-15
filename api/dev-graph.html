@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSO idea DAG</title>
+<style>
+  :root { --bg: #fbfaf8; --fg: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --card: #fff; --accent: #2f6f5e; --up: #c2410c; --down: #2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --fg: #ecebe8; --muted: #a09d97; --line: #34332f; --card: #1f1e1c; --accent: #7cc4ad; --up: #fb923c; --down: #60a5fa; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  header b { font-size: 16px; }
+  .muted { color: var(--muted); }
+  label { display: inline-flex; gap: 4px; align-items: center; }
+  input, select, button { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; }
+  button { cursor: pointer; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #cy { flex: 1; min-width: 0; }
+  aside { width: 340px; max-width: 45vw; border-left: 1px solid var(--line); padding: 12px 14px; overflow: auto; background: var(--card); }
+  a { color: var(--accent); }
+  .key span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td { padding: 3px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  @media (max-width: 700px) { main { flex-direction: column; } aside { width: auto; max-width: none; border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; } }
+</style>
+</head>
+<body>
+<header>
+  <b>Idea DAG</b>
+  <label><input type="checkbox" id="readonly"> read-only works</label>
+  <label><input type="checkbox" id="cites"> citations (no value)</label>
+  <label>min weight <select id="minw"><option value="0">any</option><option value="500">5%</option><option value="1000">10%</option><option value="2000">20%</option></select></label>
+  <span class="key muted"><span style="background: var(--up)"></span>value flows to · <span style="background: var(--down)"></span>builds on it</span>
+  <a href="/dev">← dev page</a>
+</header>
+<main>
+  <div id="cy"></div>
+  <aside id="side">
+    <p class="muted">Older works are on the left. Each arrow points from an idea to a work it builds on, with its approved weight; value flows along the arrows. Click a work to see where its value goes.</p>
+    <p class="muted" id="stats"></p>
+  </aside>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const short = (t) => { const s = t.split(':')[0]; return s.length > 34 ? s.slice(0, 32) + '…' : s; };
+let cy, selected = null;
+
+async function load() {
+  const types = $('cites').checked ? 'depends-on,cites' : 'depends-on';
+  const q = new URLSearchParams({ types, min_weight: $('minw').value });
+  const g = await (await fetch('/v1/graph?' + q)).json();
+  const shown = new Set(g.nodes.filter((n) => $('readonly').checked || n.tier !== 'read-only').map((n) => n.work_id));
+  g.edges = g.edges.filter((e) => shown.has(e.from) && shown.has(e.to));
+  const linked = new Set(g.edges.flatMap((e) => [e.from, e.to]));
+  const nodes = g.nodes.filter((n) => linked.has(n.work_id));
+  $('stats').textContent = `${nodes.length} works, ${g.edges.filter((e) => e.type === 'depends-on').length} payout links${$('cites').checked ? `, ${g.edges.filter((e) => e.type === 'cites').length} citations` : ''}.`;
+  const maxRecv = Math.max(1, ...nodes.map((n) => Number(n.received.oso)));
+  cy?.destroy();
+  cy = cytoscape({
+    container: $('cy'),
+    elements: [
+      ...nodes.map((n) => ({ data: { id: n.work_id, label: `${short(n.title)}\n${n.year}`, n, size: 18 + 30 * Math.sqrt(Number(n.received.oso) / maxRecv) } })),
+      ...g.edges.map((e, i) => ({ data: { id: 'e' + i, source: e.from, target: e.to, type: e.type, w: e.weight_bps ?? 0, label: e.weight_bps ? (e.weight_bps / 100).toFixed(0) + '%' : '' } })),
+    ],
+    wheelSensitivity: 0.3,
+    layout: { name: 'dagre', rankDir: 'RL', nodeSep: 12, rankSep: 90, edgeSep: 4 },
+    style: [
+      { selector: 'node', style: {
+        width: 'data(size)', height: 'data(size)', 'background-color': css('--accent'), label: 'data(label)',
+        'font-size': 9, color: css('--fg'), 'text-wrap': 'wrap', 'text-max-width': 120, 'text-valign': 'bottom', 'text-margin-y': 3,
+      } },
+      { selector: 'node[n.kind = "submission"]', style: { shape: 'diamond', 'background-color': '#a16207' } },
+      { selector: 'node[n.tier = "read-only"]', style: { 'background-color': css('--muted'), opacity: 0.7 } },
+      { selector: 'edge', style: {
+        width: 'mapData(w, 0, 10000, 0.6, 6)', 'line-color': css('--muted'), 'target-arrow-color': css('--muted'),
+        'target-arrow-shape': 'triangle', 'arrow-scale': 0.6, 'curve-style': 'bezier', opacity: 0.35,
+      } },
+      { selector: 'edge[type = "cites"]', style: { 'line-style': 'dashed', width: 0.6 } },
+      { selector: '.faded', style: { opacity: 0.08 } },
+      { selector: 'edge.up, edge.down', style: { opacity: 0.9 } },
+      { selector: 'node.up', style: { 'background-color': css('--up') } },
+      { selector: 'node.down', style: { 'background-color': css('--down') } },
+      { selector: 'edge.up', style: { 'line-color': css('--up'), 'target-arrow-color': css('--up'), label: 'data(label)', 'font-size': 8, color: css('--up') } },
+      { selector: 'edge.down', style: { 'line-color': css('--down'), 'target-arrow-color': css('--down') } },
+      { selector: 'node.focus', style: { 'border-width': 3, 'border-color': css('--fg') } },
+    ],
+  });
+  cy.on('tap', 'node', (e) => focus(e.target.id()));
+  cy.on('tap', (e) => { if (e.target === cy) clear(); });
+  if (!selected && location.hash.length > 1) selected = decodeURIComponent(location.hash.slice(1));
+  if (selected && cy.getElementById(selected).length) focus(selected);
+}
+
+function clear() {
+  selected = null;
+  history.replaceState(null, '', location.pathname);
+  cy.elements().removeClass('faded up down focus');
+}
+
+async function focus(id) {
+  selected = id;
+  history.replaceState(null, '', '#' + id);
+  const node = cy.getElementById(id);
+  const payout = (el) => el.filter('edge[type = "depends-on"]');
+  const up = node.successors().filter((el) => el.isNode() || payout(el).length);
+  const down = node.predecessors().filter((el) => el.isNode() || payout(el).length);
+  cy.elements().removeClass('faded up down focus').addClass('faded');
+  node.removeClass('faded').addClass('focus');
+  up.removeClass('faded').addClass('up');
+  down.removeClass('faded').addClass('down');
+  const n = node.data('n');
+  $('side').innerHTML = `
+    <h3 style="margin: 0 0 4px">${esc(n.title)}</h3>
+    <div class="muted">${esc(n.authors.slice(0, 4).join(', '))}${n.authors.length > 4 ? ' et al.' : ''} · ${n.year} · ${n.status}${n.tier ? ' · ' + n.tier : ''}</div>
+    <p>Received so far: <b>${n.received.oso} OSO</b><br>
+    <span style="color: var(--up)">Value flows to ${up.nodes().length} works</span> ·
+    <span style="color: var(--down)">${down.nodes().length} works build on it</span></p>
+    <p><a href="/dev#${id}">Open in dev page</a></p>
+    <h4 style="margin: 12px 0 4px">Simulate funding</h4>
+    <div><input id="amt" value="100" size="6"> OSO <button id="sim">Simulate</button></div>
+    <div id="flows"></div>`;
+  $('sim').onclick = () => simulate(id);
+}
+
+async function simulate(id) {
+  const r = await (await fetch('/v1/simulate/fund', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ work_id: id, amount: $('amt').value }) })).json();
+  if (r.error) { $('flows').textContent = r.error; return; }
+  const max = Math.max(...r.flows.map((f) => Number(f.to_holders.oso)));
+  cy.nodes().addClass('faded');
+  for (const f of r.flows) {
+    const node = cy.getElementById(f.work_id);
+    node.removeClass('faded').style({ width: 14 + 40 * Math.sqrt(Number(f.to_holders.oso) / max), height: 14 + 40 * Math.sqrt(Number(f.to_holders.oso) / max) });
+  }
+  $('flows').innerHTML = `<p class="muted">Node size now shows what each work's holders receive. Dry run; nothing is recorded.</p><table>${r.flows.slice(0, 25).map((f) =>
+    `<tr><td class="n">${f.depth}</td><td>${esc(short(f.title))}</td><td class="n">${f.to_holders.oso}</td></tr>`).join('')}</table>${r.flows.length > 25 ? `<p class="muted">and ${r.flows.length - 25} more</p>` : ''}`;
+}
+
+for (const id of ['readonly', 'cites', 'minw']) $(id).onchange = load;
+load().catch((e) => { $('stats').textContent = 'Cannot load the graph: ' + e.message; });
+</script>
+</body>
+</html>

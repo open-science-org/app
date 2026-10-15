@@ -23,7 +23,7 @@ npm test           # ledger and contract tests
 npm run check      # type-check
 ```
 
-The development page at http://localhost:8787/dev is a plain reference view of every endpoint: search, idea detail, payout links and citations, chat and the fund simulator. It is not the app.
+The development page at http://localhost:8787/dev is a plain reference view of every endpoint: search, idea detail, payout links and citations, chat and the fund simulator. It is not the app. http://localhost:8787/dev/graph draws the idea DAG: payout links with their weights, where each work's value flows, and a fund simulation on the graph.
 
 ## For the front end (Abinash)
 

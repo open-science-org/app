@@ -39,6 +39,7 @@
   <b>OSO API · dev page</b>
   <span id="st" class="muted">loading…</span>
   <span class="muted">Simulated units only. A reference for the API, not the app.</span>
+  <a href="/dev/graph">Idea DAG →</a>
 </header>
 <main>
   <div>
@@ -113,6 +114,7 @@ async function show(id) {
     <p>${esc(d.version.abstract)}</p>
     ${ref ? `<div class="muted">Content: ${ref.uri.startsWith('http') ? `<a href="${esc(ref.uri)}" target="_blank">${esc(ref.uri)}</a>` : `<code>${esc(ref.uri)}</code>`}</div>` : ''}
     <div class="muted">Work ID <code>${d.work_id}</code></div>
+    <div><a href="/dev/graph#${d.work_id}">See it in the DAG →</a></div>
   </section>
   <section>
     <h2>Builds on</h2>
