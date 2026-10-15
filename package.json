@@ -1,0 +1,20 @@
+{
+  "name": "oso-node",
+  "version": "0.1.0",
+  "description": "Minimal OSO node: simulated ledger, idea registry, minting and the value-flow waterfall (OIPs 8, 13, 14, 16)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "seed": "node src/seed.ts",
+    "start": "node src/server.ts",
+    "replay": "node src/replay.ts",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0"
+  }
+}

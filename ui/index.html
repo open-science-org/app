@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSO node</title>
+<style>
+  :root { --bg: #fbfaf8; --fg: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --card: #fff; --accent: #2f6f5e; --bad: #b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --fg: #ecebe8; --muted: #a09d97; --line: #34332f; --card: #1f1e1c; --accent: #7cc4ad; --bad: #f2b8b5; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+  header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: baseline; }
+  header b { font-size: 17px; }
+  .muted { color: var(--muted); }
+  main { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px; padding: 16px; }
+  @media (max-width: 760px) { main { grid-template-columns: minmax(0, 1fr); } }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  input, select, button { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+  ul.list li.sel { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td, th { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  a { color: var(--accent); cursor: pointer; }
+  code { font-size: 12px; overflow-wrap: anywhere; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bad { color: var(--bad); }
+  .tag { font-size: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+</style>
+</head>
+<body>
+<header>
+  <b>OSO node</b>
+  <span id="st" class="muted">loading…</span>
+  <span class="muted">Simulated units only. Development tool, not the app.</span>
+</header>
+<main>
+  <div>
+    <section>
+      <input id="q" placeholder="Search ideas" style="width: 100%">
+      <ul id="ideas" class="list" style="margin-top: 8px"></ul>
+    </section>
+    <section>
+      <h2>Blocks</h2>
+      <div class="row" id="devbar" hidden>
+        <button onclick="advanceBlocks(1)">+1 block</button>
+        <button onclick="advanceBlocks('round')">To round end</button>
+      </div>
+      <table id="blocks"></table>
+    </section>
+  </div>
+  <div id="detail"><section class="muted">Pick an idea.</section></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const short = (id) => id.slice(7, 19);
+const pct = (bps) => (bps / 100).toFixed(bps % 100 ? 2 : 0) + '%';
+let selected = null, status = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const data = await r.json();
+  if (!r.ok && !('ok' in data)) throw new Error(data.error);
+  return data;
+}
+
+async function refresh() {
+  status = await api('/v1/status');
+  $('st').textContent = `${status.network} · block ${status.height} · supply ${status.supply.oso} OSO · fund ${status.fund.oso} OSO · bootstrap ${status.bootstrap.oso} OSO · ${status.pending_settlements} queued settlements`;
+  $('devbar').hidden = !status.dev;
+  await Promise.all([loadIdeas(), loadBlocks()]);
+  if (selected) await show(selected);
+}
+
+async function loadIdeas() {
+  const { ideas } = await api('/v1/ideas?q=' + encodeURIComponent($('q').value));
+  $('ideas').innerHTML = ideas.map((i) => `<li data-id="${i.work_id}" class="${i.work_id === selected ? 'sel' : ''}">
+    ${esc(i.title)}<br><span class="muted">${i.origin_date.slice(0, 4)} · ${i.status}${i.tier ? ' · ' + i.tier : ''} · received ${i.received.oso} OSO</span></li>`).join('');
+  for (const li of $('ideas').children) li.onclick = () => show(li.dataset.id);
+}
+
+async function loadBlocks() {
+  const { blocks } = await api('/v1/ledger/blocks');
+  $('blocks').innerHTML = blocks.map((b) => `<tr><td class="n">${b.number}</td><td>${b.txs.map((t) =>
+    `<span class="${t.ok ? '' : 'bad'}" title="${esc(t.error ?? '')}">${t.type}</span>`).join(', ') || `<span class="muted">${b.events ? 'block-end processing' : 'empty'}</span>`}</td>
+    <td class="n muted">${b.events} events</td></tr>`).join('');
+}
+
+async function show(id) {
+  selected = id;
+  history.replaceState(null, '', '#' + id);
+  for (const li of $('ideas').children) li.classList.toggle('sel', li.dataset.id === id);
+  const d = await api('/v1/ideas/' + encodeURIComponent(id));
+  const link = (x) => `<a onclick="show('${x.work_id}')">${esc(x.title)}</a>`;
+  const ref = d.version.content_refs[0];
+  $('detail').innerHTML = `
+  <section>
+    <h2>${esc(d.title)}</h2>
+    <div class="muted">${esc(d.authors.join(', '))}</div>
+    <div class="row" style="margin-top: 6px">
+      <span class="tag">${d.type}</span><span class="tag">${d.status}</span>${d.tier ? `<span class="tag">${d.tier}</span>` : ''}
+      <span class="tag">origin ${d.origin_date}</span><span class="tag">α ${pct(d.registry.alpha_bps)}</span>
+    </div>
+    <p>${esc(d.version.abstract)}</p>
+    ${ref ? `<div class="muted">Content: ${ref.uri.startsWith('http') ? `<a href="${esc(ref.uri)}" target="_blank">${esc(ref.uri)}</a>` : `<code>${esc(ref.uri)}</code>`}</div>` : ''}
+    <div class="muted">Work ID <code>${d.work_id}</code></div>
+  </section>
+  <section>
+    <h2>Builds on</h2>
+    ${d.parents.length ? `<table><tr><th>Parent</th><th class="n">Weight</th><th class="n">Owed now</th></tr>${d.parents.map((p) =>
+      `<tr><td>${link(p)}</td><td class="n">${pct(p.weight_bps)}</td><td class="n">${p.owed.oso}</td></tr>`).join('')}</table>`
+      : '<span class="muted">No approved parents: this idea keeps everything it receives.</span>'}
+    <h2 style="margin-top: 12px">Built on by</h2>
+    ${d.children.length ? `<table>${d.children.map((c) => `<tr><td>${link(c)}</td><td class="n">${pct(c.weight_bps)}</td></tr>`).join('')}</table>` : '<span class="muted">Nothing yet.</span>'}
+  </section>
+  <section>
+    <h2>Value</h2>
+    <table>
+      <tr><td>Received in total</td><td class="n">${d.received.oso} OSO</td></tr>
+      <tr><td>Held for parents (pending)</td><td class="n">${d.registry.held_for_parents.oso} OSO</td></tr>
+      ${d.registry.mint ? `<tr><td>Mint (${d.status === 'admitted' ? 'in escrow until block ' + d.registry.window_end : d.status === 'removed' ? 'burned' : 'released'})</td><td class="n">${d.registry.mint.oso} OSO</td></tr>` : ''}
+    </table>
+    <h2 style="margin-top: 12px">IDEA holders</h2>
+    <table><tr><th>Account</th><th class="n">Units</th><th class="n">Balance</th></tr>${d.registry.holders.map((h) =>
+      `<tr><td><code>${esc(h.account.startsWith('unresolved:') ? 'unresolved claims (imported work)' : h.account)}</code></td><td class="n">${h.units.toLocaleString()}</td><td class="n">${h.balance.oso}</td></tr>`).join('')}</table>
+  </section>
+  <section>
+    <h2>Fund this idea</h2>
+    <div class="row">
+      <input id="amt" value="100" size="8"> OSO
+      <button onclick="simulate()">Simulate</button>
+      ${status.dev && ['imported', 'published'].includes(d.status) ? '<button class="primary" onclick="fundIt()">Fund for real (dev funder)</button>' : ''}
+      <span id="fundmsg" class="muted"></span>
+    </div>
+    <div id="sim" style="margin-top: 8px"></div>
+  </section>`;
+}
+
+async function simulate() {
+  const r = await api('/v1/simulate/fund', { work_id: selected, amount: $('amt').value });
+  $('sim').innerHTML = `<table><tr><th>Idea</th><th class="n">Receives</th><th class="n">To holders</th><th class="n">Passes up</th></tr>${r.flows.map((f) =>
+    `<tr><td>${esc(f.title)}</td><td class="n">${f.received.oso}</td><td class="n">${f.to_holders.oso}</td><td class="n">${f.passed_up.oso}</td></tr>`).join('')}</table>
+    <div class="muted">Dry run, settled all the way up. Nothing is recorded.</div>`;
+}
+
+async function fundIt() {
+  const r = await api('/v1/dev/fund', { from: 'funder', work_id: selected, amount: $('amt').value });
+  await refresh();
+  $('fundmsg').textContent = r.ok ? `Recorded in block ${r.block}. Amounts below the dust threshold settle at the round end.` : r.error;
+}
+
+async function advanceBlocks(n) { await api('/v1/dev/advance', { blocks: n }); await refresh(); }
+
+$('q').oninput = loadIdeas;
+if (location.hash.length > 1) selected = decodeURIComponent(location.hash.slice(1));
+refresh().catch((e) => { $('st').textContent = 'Cannot reach the node: ' + e.message; });
+</script>
+</body>
+</html>
