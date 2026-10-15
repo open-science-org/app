@@ -2,7 +2,7 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { applyBlock, checkEnvelope, produceBlock, type Block, type Tx } from './ledger.ts';
-import { emptyState, type State } from './state.ts';
+import { cloneState, emptyState, type State } from './state.ts';
 
 export class Chain {
   state: State = emptyState();
@@ -34,7 +34,7 @@ export class Chain {
 
   /** Checks a transaction's envelope against the head, as a mempool would. */
   check(tx: Tx): string | null {
-    const next = structuredClone(this.state);
+    const next = cloneState(this.state);
     next.height += 1;
     return checkEnvelope(next, tx);
   }

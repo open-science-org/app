@@ -1,20 +1,30 @@
 {
-  "name": "oso-node",
+  "name": "oso-app",
   "version": "0.1.0",
-  "description": "Minimal OSO node: simulated ledger, idea registry, minting and the value-flow waterfall (OIPs 8, 13, 14, 16)",
+  "description": "OSO app foundation: ledger, API contract and API, seed data",
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=23.6"
+    "node": ">=22.18"
   },
   "scripts": {
-    "seed": "node src/seed.ts",
-    "start": "node src/server.ts",
-    "replay": "node src/replay.ts",
-    "test": "node --test test/"
+    "seed": "node api/seed.ts",
+    "start": "node api/server.ts",
+    "replay": "node api/replay.ts",
+    "test": "node --test",
+    "import": "node scripts/import.ts",
+    "types": "openapi-typescript contract/openapi.yaml -o contract/types.ts",
+    "check": "tsc -p ."
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "ajv": "^8.20.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^7.0.2",
+    "yaml": "^2.9.1"
   }
 }

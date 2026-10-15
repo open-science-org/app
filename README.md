@@ -1,74 +1,87 @@
-# OSO node (minimal)
+# OSO app
 
-The smallest working version of the OSO core protocol: a simulated ledger with signed transactions and hash-chained blocks, the idea registry, minting on validation, and the value-flow waterfall. It comes with a JSON API and a one-page development UI. The main app is a separate project; this node is what its API reads from and writes to (see [Architecture and API](https://github.com/open-science-org/OSO/blob/master/docs/ui/architecture.md)).
+The foundation for the OSO v1 app ([design](https://github.com/open-science-org/OSO/blob/master/docs/ui-v1.md)):
+- the API contract;
+- a working API on a real ledger;
+- seed data from the proposed seed field (parameter-efficient fine-tuning of LLMs);
+- the community setup the app reads;
+- a swappable AI adapter;
+- tests.
+
+The website and the real front end are still to be built, in `web/`.
 
 All amounts are simulated units with no outside value.
 
-## Run it
+## Quick start
 
-Requires Node.js 23.6 or later (it runs TypeScript directly, with no build step).
+Requires Node.js 22.18 or later (it runs TypeScript directly, with no build step).
 
 ```sh
 npm install
-npm test        # test cases from OIP-8 and OIP-14, plus ledger rules
-npm start       # http://localhost:8787 — seeds a development ledger on first run
-npm run seed    # rewrite ./data with a fresh development ledger
-npm run replay  # rebuild state from ./data/blocks and check every block
+npm start          # API on http://localhost:8787; seeds a development ledger on first run
+npm test           # ledger and contract tests
+npm run check      # type-check
 ```
 
-The development ledger has genesis, a curated slice of eight parameter-efficient fine-tuning papers with **illustrative** weights, one new idea taken through submission, admission and publication, and one 1,000 OSO funding payment to LoRA that settles upstream. The fixture is in [fixtures/peft-slice.json](fixtures/peft-slice.json). Its weights were not assessed or approved under OIP-14. They exist only to exercise the waterfall, and the OpenAlex import will replace them.
+The development page at http://localhost:8787/dev is a plain reference view of every endpoint: search, idea detail, payout links and citations, chat and the fund simulator. It is not the app.
 
-## What it implements
+## For the front end (Abinash)
 
-| Spec | Implemented |
+- **Build in `web/`** against the running API, which sends CORS headers so a dev server on another port can call it. See [web/README.md](web/README.md).
+- **The contract is [contract/openapi.yaml](contract/openapi.yaml).** Types for every request and response are generated in [contract/types.ts](contract/types.ts) (`npm run types`).
+- **Read the community setup** from `GET /v1/communities/{id}/setup`, as [Modular and customizable design](https://github.com/open-science-org/OSO/blob/master/docs/ui/modularity.md) describes: modules, parameters, and interface options (screens on or off, idea types, theme, labels).
+- **Never compute protocol rules in the browser.** Weights, value flows, balances and statuses come from the API. Amounts arrive as `{ base, oso }`; show `oso`.
+
+## For data and the API (Bikrant)
+
+- **Contract first.** Change `contract/openapi.yaml` in the same pull request as the API, then run `npm run types`. The contract tests call every operation and validate each response against the schema; a new operation without a test fails the suite.
+- **Seed data.** `npm run import` rebuilds [seed/peft.json](seed/peft.json) from [seed/curated.json](seed/curated.json):
+  - arXiv metadata for the curated slice;
+  - Semantic Scholar references, plus a read-only tier of works cited by at least three curated works.
+
+  Today the seed has 41 curated works, 148 read-only works and 2,814 citation links. `npm run seed` rebuilds the development ledger from it.
+- **AI.** All model calls go through [api/ai.ts](api/ai.ts), configured in [ai.config.json](ai.config.json):
+  - The default provider is an offline `stub` that answers from the graph alone, so nobody needs a key.
+  - For a real model: `OSO_AI_CHAT_PROVIDER=openrouter OSO_AI_CHAT_MODEL=<model> OPENROUTER_API_KEY=… npm start`, or `local` for Ollama.
+- **Next in the work plan:**
+  - hybrid search (keyword plus embeddings);
+  - AI edge assessments for the curated slice, with review;
+  - streaming chat;
+  - the field map;
+  - per-idea MCP endpoints;
+  - deployment.
+
+## What is real and what stands in
+
+| Part | State |
 | --- | --- |
-| OIP-8 Token structure | Supply cap and mint formula, mint split 50 / 35 / 15 with escrow until the challenge window closes, burn on removal, submission stakes, validator fees from the OSO fund, bootstrap pool, integer base units with floor rounding |
-| OIP-14 Attribution and value flow | Payout waterfall with cumulative counters, dust threshold and round settlement, per-block settlement cap, time rule for payout edges, weight approval and re-approval applied only forward |
-| OIP-16 Idea object | Version schema, exact fields, version and work IDs by RFC 8785 canonical JSON and SHA-256, external ID index, imports with attribution only |
-| OIP-10 Ownership | Ethereum-style secp256k1 identities, every owner signs a submission, owner shares become IDEA units, imported works keep their units in an unresolved-claims account |
-| OIP-13 Ledger | Signed transactions with per-sender nonces and a network domain, signed hash-chained blocks with day labels, failed transactions recorded and reverted, events recorded per block, replay from the log alone with every block checked |
-| OIP-12 Block-end processing | Window closings, then settlement, in a fixed order |
+| Ledger: signed transactions, hash-chained blocks, replay, minting, escrow, the OIP-14 waterfall | Implemented and tested against the OIP-8 and OIP-14 test cases |
+| Seed works, dates, authors, abstracts and citations | Real, from arXiv and Semantic Scholar |
+| Curated slice | A first draft of 41 works; a domain expert must review it |
+| Payout weights of the curated slice | **Citation-only** suggestions (OIP-14 with λ = 0): equal weights over the curated works each paper cites. Each approval records this basis. Not yet assessed by AI or reviewed by the weight panel |
+| Validation and challenges (OIP-11) | Not built. The operator records outcomes with `idea.admit` and `idea.remove` |
+| Sign-in, claims, reputation, review | Not built (Phase B) |
+| Chat | Works with any OpenAI-compatible provider; offline stub by default |
 
-A conservation check runs after every block: all balances must sum to minted minus burned.
-
-## Not built yet
-
-- **Validation and challenges (OIP-11).** Until they exist, the operator records their outcomes with `idea.admit` (validator vote) and `idea.remove` (upheld challenge).
-- Claims and adjudication (OIP-10 section 6), reputation (OIP-9), review (OIP-17), new versions of a work, the content store, sealed priority claims, AI services, community setups and modules (OIP-12).
-- Publishing blocks to a public git repository and independent timestamps (OIP-13 section 4).
-
-**Simplifications to fix before the spec is final**
-
-- Transactions are signed over keccak-256 of their canonical JSON, not EIP-712 typed data.
-- The state hash is SHA-256 of the canonical state, not a Merkle root.
-- Each transaction posted to `/v1/tx` is committed in its own block.
-
-## API
-
-| Endpoint | Returns |
-| --- | --- |
-| `GET /v1/status` | Height, head, supply, fund, bootstrap pool, parameters |
-| `GET /v1/ideas?q=` | Ideas with title, type, status, origin date and total received |
-| `GET /v1/ideas/{work_id}` | Version, registry state, parents with weights and amounts owed, children, IDEA holders |
-| `GET /v1/ideas/{work_id}/graph?depth=2` | Nodes and approved payout edges around an idea |
-| `POST /v1/simulate/fund` `{work_id, amount}` | Dry run of a funding payment settled all the way up: what each idea receives, pays to holders and passes up (amount in OSO, for example `"100"`) |
-| `GET /v1/ledger/blocks?page=`, `GET /v1/ledger/blocks/{n}` | Recent blocks; one full block |
-| `POST /v1/tx` | Submit a signed transaction |
-| `POST /v1/dev/fund`, `POST /v1/dev/advance` | Development mode only: fund as a development identity; add empty blocks (`{"blocks": 1}` or `{"blocks": "round"}`) |
-
-Amounts are returned as `{ "base": "<base units>", "oso": "<decimal>" }`.
-
-**Development mode.** The node runs in development mode unless `OSO_OPERATOR_KEY` is set. In that mode, all keys come from public seeds in [src/demo.ts](src/demo.ts) and the `/v1/dev` endpoints are on. Never use those keys for anything real.
+The development ledger also has one example submission taken through admission and publication, and one 1,000 OSO funding payment to LoRA. **Development mode** (no `OSO_OPERATOR_KEY`) uses public keys from [api/demo.ts](api/demo.ts); never use them for anything real.
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
-| `src/state.ts` | State, accounts, amounts |
-| `src/waterfall.ts` | OIP-14 waterfall, approvals, settlement |
-| `src/ledger.ts` | Transaction types, blocks, execution and replay |
-| `src/chain.ts` | Block log on disk |
-| `src/crypto.ts` | Canonical JSON, hashes, keys and signatures |
-| `src/server.ts`, `ui/index.html` | API and development UI |
-| `src/demo.ts`, `fixtures/` | Development ledger |
-| `test/` | Tests |
+| `contract/` | OpenAPI contract and generated TypeScript types |
+| `api/` | The API (`app.ts`), AI adapter, development ledger, development page, contract tests |
+| `ledger/` | The core protocol: state, transactions and blocks, the waterfall, keys; ledger tests |
+| `seed/` | Curated list, imported seed data, community setup |
+| `scripts/` | Seed importer |
+| `web/` | The front end (to be built) |
+| `docs/decisions.md` | Decision log |
+
+The ledger implements OIPs 8, 13, 14 and 16, and owner signatures from OIP-10. Known simplifications, to fix before the specs are final:
+- Transactions are signed over keccak-256 of canonical JSON, not EIP-712 typed data.
+- The state hash is a hash of the canonical state, not a Merkle root.
+- Each transaction posted to `/v1/tx` gets its own block.
+
+## Data
+
+Seed data comes from [Semantic Scholar](https://www.semanticscholar.org) and [arXiv](https://arxiv.org). Thank you to arXiv for use of its open access interoperability. Check both sources' terms before any public launch.

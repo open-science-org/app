@@ -1,0 +1,34 @@
+{
+  "id": "peft",
+  "name": "Parameter-efficient fine-tuning",
+  "description": "The v1 seed community: parameter-efficient fine-tuning of large language models (adapters, prompt and prefix tuning, LoRA and its variants). A proposal; not yet confirmed.",
+  "version": 1,
+  "activation_block": 0,
+  "modules": {
+    "identity":     { "id": "oso.identity.signin-attestations", "version": "0.0.0", "spec": "OIP-10", "parameters": { "sign_in": ["google", "email-link", "github", "orcid"], "claim_attestations": ["orcid"] } },
+    "ingestion":    { "id": "oso.ingestion.arxiv-s2",           "version": "0.1.0", "spec": "OIP-16 section 9", "parameters": { "sources": ["arxiv", "semantic-scholar"], "curated_list": "seed/curated.json", "read_only_min_cited": 3 } },
+    "pre-screen":   { "id": "oso.pre-screen.two-model",          "version": "0.0.0", "spec": "OIP-11 section 2", "parameters": {} },
+    "validation":   { "id": "oso.validation.random-n",           "version": "0.0.0", "spec": "OIP-11", "parameters": { "N": 5, "N_ch": 5, "r_ch_bps": 5000 } },
+    "review":       { "id": "oso.review.pipeline",               "version": "0.0.0", "spec": "OIP-17", "parameters": {
+      "layers": [
+        { "type": "spam-filter" },
+        { "type": "assigned-expert", "k": 3 },
+        { "type": "expert-reader" },
+        { "type": "community", "m_comm": 5 }
+      ],
+      "score_scale": { "min": 0, "max": 10 }
+    } },
+    "edge-weights": { "id": "oso.edge-weights.evidence-approval", "version": "0.1.0", "spec": "OIP-14", "parameters": { "lambda_bps": 0, "note": "λ = 0 until intrinsic assessments exist: weights are citation-only suggestions" } },
+    "ai-service":   { "id": "oso.ai.openai-compatible",          "version": "0.1.0", "spec": "OIP-15", "parameters": { "config": "ai.config.json" } },
+    "reputation":   { "id": "oso.reputation.expertise-integrity", "version": "0.0.0", "spec": "OIP-9", "parameters": {} },
+    "storage":      { "id": "oso.storage.central-hash",          "version": "0.0.0", "spec": "OIP-16 section 5a", "parameters": {} },
+    "governance":   { "id": "oso.governance.founding-team",      "version": "0.0.0", "spec": "OIP-0", "parameters": {} }
+  },
+  "interface": {
+    "screens": { "search": true, "idea": true, "graph": true, "lineage": true, "simulator": true, "chat": true, "transparency": true, "field_map": false, "submit": false, "validate": false, "review": false, "claim": false },
+    "idea_types": ["paper", "preprint", "dataset", "code", "review", "replication", "hypothesis", "other"],
+    "subtypes": ["code/model-weights", "dataset/benchmark"],
+    "theme": { "accent": "#2f6f5e" },
+    "labels": { "idea": "Idea", "fund": "Fund" }
+  }
+}

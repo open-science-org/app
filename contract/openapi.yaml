@@ -1,0 +1,679 @@
+openapi: 3.1.0
+info:
+  title: OSO API
+  version: 0.1.0
+  description: |
+    The contract between the OSO app (front end) and the API. Field names follow OIP-16.
+    Rules (weights, value flow, tokens) are computed by the API from the ledger; the front end only displays them.
+    All amounts are simulated units with no outside value.
+
+    Change this file in the same pull request as any change to the API, then run `npm run types`.
+servers:
+  - url: http://localhost:8787
+tags:
+  - name: ideas
+  - name: graph
+  - name: value
+  - name: ai
+  - name: community
+  - name: ledger
+  - name: dev
+    description: Development mode only. Signs with public development keys.
+
+paths:
+  /v1/status:
+    get:
+      tags: [ledger]
+      summary: Ledger height, supply and parameters
+      operationId: getStatus
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Status' } } } }
+
+  /v1/communities:
+    get:
+      tags: [community]
+      summary: Communities
+      operationId: listCommunities
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [communities]
+                additionalProperties: false
+                properties:
+                  communities: { type: array, items: { $ref: '#/components/schemas/CommunitySummary' } }
+
+  /v1/communities/{id}/setup:
+    get:
+      tags: [community]
+      summary: A community's setup (OIP-12); the app reads modules, parameters and interface options from it
+      operationId: getCommunitySetup
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CommunitySetup' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/ideas:
+    get:
+      tags: [ideas]
+      summary: Search ideas
+      operationId: searchIdeas
+      parameters:
+        - { name: q, in: query, description: Words matched against title, abstract and authors, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: tier, in: query, schema: { type: string, enum: [curated, read-only] } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/IdeaStatus' } }
+        - { name: year_from, in: query, schema: { type: integer } }
+        - { name: year_to, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string, enum: [relevance, newest, oldest, received, cited], default: relevance } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, page, per_page, ideas]
+                additionalProperties: false
+                properties:
+                  total: { type: integer }
+                  page: { type: integer }
+                  per_page: { type: integer }
+                  ideas: { type: array, items: { $ref: '#/components/schemas/IdeaSummary' } }
+
+  /v1/ideas/{work_id}:
+    get:
+      tags: [ideas]
+      summary: One idea, with its version, registry state, payout links and citations
+      operationId: getIdea
+      parameters:
+        - { $ref: '#/components/parameters/WorkId' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/IdeaDetail' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/ideas/{work_id}/graph:
+    get:
+      tags: [graph]
+      summary: The neighbourhood of an idea
+      operationId: getIdeaGraph
+      parameters:
+        - { $ref: '#/components/parameters/WorkId' }
+        - { name: depth, in: query, schema: { type: integer, minimum: 1, maximum: 4, default: 1 } }
+        - { name: types, in: query, description: 'Comma-separated edge types', schema: { type: string, default: 'depends-on,cites' } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Graph' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/ideas/{work_id}/cite:
+    get:
+      tags: [ideas]
+      summary: A citation for the idea
+      operationId: citeIdea
+      parameters:
+        - { $ref: '#/components/parameters/WorkId' }
+        - { name: format, in: query, schema: { type: string, enum: [bibtex], default: bibtex } }
+      responses:
+        '200': { description: OK, content: { text/plain: { schema: { type: string } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/graph:
+    get:
+      tags: [graph]
+      summary: Whole-field view for the graph explorer (lineage)
+      operationId: getGraph
+      parameters:
+        - { name: types, in: query, schema: { type: string, default: 'depends-on' } }
+        - { name: tier, in: query, schema: { type: string, enum: [curated, read-only] } }
+        - { name: min_weight, in: query, description: 'Minimum weight in bps for depends-on edges', schema: { type: integer, default: 0 } }
+        - { name: year_from, in: query, schema: { type: integer } }
+        - { name: year_to, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Graph' } } } }
+
+  /v1/graph/path:
+    get:
+      tags: [graph]
+      summary: The shortest chain of links from one idea back to another
+      operationId: getGraphPath
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 'OK; path is empty when there is no chain'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path, edges]
+                additionalProperties: false
+                properties:
+                  path: { type: array, items: { $ref: '#/components/schemas/IdeaSummary' } }
+                  edges: { type: array, items: { $ref: '#/components/schemas/Edge' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/graph/export:
+    get:
+      tags: [graph]
+      summary: The whole graph, all edge types
+      operationId: exportGraph
+      parameters:
+        - { name: format, in: query, schema: { type: string, enum: [json], default: json } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Graph' } } } }
+
+  /v1/simulate/fund:
+    post:
+      tags: [value]
+      summary: Dry run of funding an idea, settled all the way up (OIP-14). Records nothing.
+      operationId: simulateFund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [work_id, amount]
+              additionalProperties: false
+              properties:
+                work_id: { type: string }
+                amount: { type: string, description: 'In OSO, for example "100" or "0.5"' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [work_id, amount, flows]
+                additionalProperties: false
+                properties:
+                  work_id: { type: string }
+                  amount: { $ref: '#/components/schemas/Amount' }
+                  flows: { type: array, items: { $ref: '#/components/schemas/Flow' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/chat:
+    post:
+      tags: [ai]
+      summary: Ask about an idea; answers are grounded in the idea and its neighbours and cite them
+      operationId: chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [work_id, messages]
+              additionalProperties: false
+              properties:
+                work_id: { type: string }
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [role, content]
+                    additionalProperties: false
+                    properties:
+                      role: { type: string, enum: [user, assistant] }
+                      content: { type: string, maxLength: 4000 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [answer, citations, provider, model, ai_generated]
+                additionalProperties: false
+                properties:
+                  answer: { type: string }
+                  citations: { type: array, items: { $ref: '#/components/schemas/IdeaRef' } }
+                  provider: { type: string }
+                  model: { type: string }
+                  ai_generated: { const: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { description: The AI budget for today is used up, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /v1/transparency:
+    get:
+      tags: [ledger]
+      summary: Ledger status, fund, bootstrap pool and AI spending
+      operationId: getTransparency
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Transparency' } } } }
+
+  /v1/ledger/blocks:
+    get:
+      tags: [ledger]
+      summary: Recent blocks, newest first
+      operationId: listBlocks
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [height, blocks]
+                additionalProperties: false
+                properties:
+                  height: { type: integer }
+                  blocks: { type: array, items: { $ref: '#/components/schemas/BlockSummary' } }
+
+  /v1/ledger/blocks/{n}:
+    get:
+      tags: [ledger]
+      summary: One full block as recorded in the public log (OIP-13)
+      operationId: getBlock
+      parameters:
+        - { name: n, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/tx:
+    post:
+      tags: [ledger]
+      summary: Submit a signed transaction (OIP-13 section 1); committed in its own block for now
+      operationId: submitTx
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { description: Committed, content: { application/json: { schema: { $ref: '#/components/schemas/TxResult' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { description: Included in a block but failed, content: { application/json: { schema: { $ref: '#/components/schemas/TxResult' } } } }
+
+  /v1/dev/fund:
+    post:
+      tags: [dev]
+      summary: Fund an idea as a development identity
+      operationId: devFund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [work_id, amount]
+              additionalProperties: false
+              properties:
+                from: { type: string, default: funder }
+                work_id: { type: string }
+                amount: { type: string }
+      responses:
+        '200': { description: Committed, content: { application/json: { schema: { $ref: '#/components/schemas/TxResult' } } } }
+        '422': { description: Failed, content: { application/json: { schema: { $ref: '#/components/schemas/TxResult' } } } }
+
+  /v1/dev/advance:
+    post:
+      tags: [dev]
+      summary: Add empty blocks, for example to close challenge windows or end a settlement round
+      operationId: devAdvance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                blocks: { oneOf: [{ type: integer, minimum: 1, maximum: 100 }, { const: round }] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, required: [height], additionalProperties: false, properties: { height: { type: integer } } }
+
+components:
+  parameters:
+    WorkId:
+      name: work_id
+      in: path
+      required: true
+      description: 'Work ID, for example sha256:<64 hex characters>'
+      schema: { type: string }
+
+  responses:
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    BadRequest: { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error: { type: string }
+
+    Amount:
+      description: An amount in base units (1 OSO = 10^18) and as a decimal OSO string for display
+      type: object
+      required: [base, oso]
+      additionalProperties: false
+      properties:
+        base: { type: string, pattern: '^\d+$' }
+        oso: { type: string }
+
+    IdeaStatus:
+      type: string
+      enum: [imported, submitted, admitted, published, removed]
+
+    IdeaRef:
+      type: object
+      required: [work_id, title]
+      additionalProperties: false
+      properties:
+        work_id: { type: string }
+        title: { type: string }
+
+    IdeaSummary:
+      allOf:
+        - $ref: '#/components/schemas/IdeaSummaryFields'
+      unevaluatedProperties: false
+
+    IdeaSummaryFields:
+      description: Fields shared by IdeaSummary and IdeaDetail
+      type: object
+      required: [work_id, title, type, authors, origin_date, year, status, kind, tier, community, received, cited_by]
+      properties:
+        work_id: { type: string }
+        title: { type: string }
+        type: { type: string }
+        authors: { type: array, items: { type: string } }
+        origin_date: { type: string, format: date }
+        year: { type: integer }
+        status: { $ref: '#/components/schemas/IdeaStatus' }
+        kind: { type: string, enum: [import, submission] }
+        tier: { type: [string, 'null'], enum: [curated, read-only, null], description: 'Imports only: curated works can move value; read-only works cannot' }
+        community: { type: string }
+        received: { $ref: '#/components/schemas/Amount' }
+        cited_by: { type: integer, description: Number of ideas in the graph that cite or depend on this one }
+
+    Version:
+      description: An immutable idea version, exactly the fields of OIP-16 section 4
+      type: object
+      required: [schema, type, title, abstract, domain_tags, content_refs, previous, parents, cites, targets, license, ai_disclosure, owners, attribution, external_ids, registrant]
+      additionalProperties: false
+      properties:
+        schema: { const: oso.idea/1 }
+        type: { type: string }
+        title: { type: string }
+        abstract: { type: string }
+        domain_tags: { type: array, items: { type: string } }
+        content_refs:
+          type: array
+          items:
+            type: object
+            required: [role, hash, uri, media_type]
+            additionalProperties: false
+            properties:
+              role: { type: string, enum: [main, supplement, data, code] }
+              hash: { type: string }
+              uri: { type: string }
+              media_type: { type: string }
+        previous: { type: [string, 'null'] }
+        parents:
+          type: array
+          items: { type: object, required: [version_id, weight_bps], additionalProperties: false, properties: { version_id: { type: string }, weight_bps: { type: integer } } }
+        cites: { type: array, items: { type: object } }
+        targets: { type: object }
+        license: { type: string }
+        ai_disclosure:
+          type: object
+          required: [level, description]
+          additionalProperties: false
+          properties:
+            level: { type: string, enum: [none, assisted, generated] }
+            description: { type: string }
+        owners:
+          type: array
+          items: { type: object, required: [identity, share_bps], additionalProperties: false, properties: { identity: { type: string }, share_bps: { type: integer } } }
+        attribution:
+          type: array
+          items: { type: object, required: [name, orcid], additionalProperties: false, properties: { name: { type: string }, orcid: { type: string } } }
+        external_ids: { type: object, additionalProperties: { type: string } }
+        registrant: { type: string }
+
+    Approval:
+      description: Who approved a weight set, on what basis, from which block (OIP-14 section 7)
+      type: object
+      required: [authority, basis, effective_block]
+      additionalProperties: false
+      properties:
+        authority: { type: string, enum: [admission, panel] }
+        basis: { type: string }
+        effective_block: { type: integer }
+
+    IdeaDetail:
+      allOf:
+        - $ref: '#/components/schemas/IdeaSummaryFields'
+      type: object
+      required: [version, external_ids, registry, parents, children, cites, cited_by_ideas]
+      unevaluatedProperties: false
+      properties:
+        version: { $ref: '#/components/schemas/Version' }
+        external_ids: { type: object, additionalProperties: { type: string } }
+        registry:
+          type: object
+          required: [alpha_bps, origin_block, approval, held_for_parents, mint, window_end, holders]
+          additionalProperties: false
+          properties:
+            alpha_bps: { type: integer, description: Share of incoming value the idea keeps }
+            origin_block: { type: integer }
+            approval: { oneOf: [{ $ref: '#/components/schemas/Approval' }, { type: 'null' }] }
+            held_for_parents: { $ref: '#/components/schemas/Amount' }
+            mint: { oneOf: [{ $ref: '#/components/schemas/Amount' }, { type: 'null' }] }
+            window_end: { type: [integer, 'null'] }
+            holders:
+              type: array
+              items:
+                type: object
+                required: [account, label, units, balance]
+                additionalProperties: false
+                properties:
+                  account: { type: string }
+                  label: { type: string }
+                  units: { type: integer }
+                  balance: { $ref: '#/components/schemas/Amount' }
+        parents:
+          description: Approved payout parents (depends-on)
+          type: array
+          items:
+            type: object
+            required: [work_id, title, weight_bps, owed]
+            additionalProperties: false
+            properties:
+              work_id: { type: string }
+              title: { type: string }
+              weight_bps: { type: integer }
+              owed: { $ref: '#/components/schemas/Amount' }
+        children:
+          description: Ideas with an approved payout link to this one
+          type: array
+          items:
+            type: object
+            required: [work_id, title, weight_bps]
+            additionalProperties: false
+            properties:
+              work_id: { type: string }
+              title: { type: string }
+              weight_bps: { type: integer }
+        cites: { description: Works in the graph this idea cites, type: array, items: { $ref: '#/components/schemas/IdeaRef' } }
+        cited_by_ideas: { description: Ideas in the graph that cite this one, type: array, items: { $ref: '#/components/schemas/IdeaRef' } }
+
+    Edge:
+      description: 'A link from a child to a parent: depends-on edges are approved payout links with weights; cites edges are declared citations'
+      type: object
+      required: [from, to, type, weight_bps, approval]
+      additionalProperties: false
+      properties:
+        from: { type: string }
+        to: { type: string }
+        type: { type: string, enum: [depends-on, cites] }
+        weight_bps: { type: [integer, 'null'] }
+        approval: { oneOf: [{ $ref: '#/components/schemas/Approval' }, { type: 'null' }] }
+
+    Graph:
+      type: object
+      required: [nodes, edges]
+      additionalProperties: false
+      properties:
+        nodes: { type: array, items: { $ref: '#/components/schemas/IdeaSummary' } }
+        edges: { type: array, items: { $ref: '#/components/schemas/Edge' } }
+
+    Flow:
+      type: object
+      required: [work_id, title, depth, received, to_holders, passed_up]
+      additionalProperties: false
+      properties:
+        work_id: { type: string }
+        title: { type: string }
+        depth: { type: integer, description: Fewest links from the funded idea }
+        received: { $ref: '#/components/schemas/Amount' }
+        to_holders: { $ref: '#/components/schemas/Amount' }
+        passed_up: { $ref: '#/components/schemas/Amount' }
+
+    Status:
+      type: object
+      required: [network, dev, height, head, day, operator, supply, fund, bootstrap, ideas, pending_settlements, params, note]
+      additionalProperties: false
+      properties:
+        network: { type: string }
+        dev: { type: boolean }
+        height: { type: integer }
+        head: { type: [string, 'null'] }
+        day: { type: string }
+        operator: { type: [string, 'null'] }
+        supply: { $ref: '#/components/schemas/Amount' }
+        fund: { $ref: '#/components/schemas/Amount' }
+        bootstrap: { $ref: '#/components/schemas/Amount' }
+        ideas: { type: integer }
+        pending_settlements: { type: integer }
+        params: { type: object }
+        note: { type: string }
+
+    CommunitySummary:
+      type: object
+      required: [id, name, description, setup_version]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        setup_version: { type: integer }
+
+    CommunitySetup:
+      description: 'A community setup (OIP-12 section 5): a module per slot, parameters and interface options'
+      type: object
+      required: [id, name, description, version, activation_block, modules, parameters, interface]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        version: { type: integer }
+        activation_block: { type: integer }
+        modules:
+          type: object
+          additionalProperties:
+            type: object
+            required: [id, version, spec, parameters]
+            additionalProperties: false
+            properties:
+              id: { type: string }
+              version: { type: string }
+              spec: { type: string }
+              parameters: { type: object }
+        parameters: { type: object, description: Ledger parameters in force (OIP-8, OIP-14) }
+        interface:
+          type: object
+          required: [screens, idea_types, subtypes, theme, labels]
+          additionalProperties: false
+          properties:
+            screens: { type: object, additionalProperties: { type: boolean } }
+            idea_types: { type: array, items: { type: string } }
+            subtypes: { type: array, items: { type: string } }
+            theme: { type: object, additionalProperties: { type: string } }
+            labels: { type: object, additionalProperties: { type: string } }
+
+    Transparency:
+      type: object
+      required: [ledger, supply, minted, burned, fund, bootstrap, ai]
+      additionalProperties: false
+      properties:
+        ledger:
+          type: object
+          required: [height, head, blocks, trust_assumptions]
+          additionalProperties: false
+          properties:
+            height: { type: integer }
+            head: { type: [string, 'null'] }
+            blocks: { type: integer }
+            trust_assumptions: { type: array, items: { type: string } }
+        supply: { $ref: '#/components/schemas/Amount' }
+        minted: { $ref: '#/components/schemas/Amount' }
+        burned: { $ref: '#/components/schemas/Amount' }
+        fund: { $ref: '#/components/schemas/Amount' }
+        bootstrap: { $ref: '#/components/schemas/Amount' }
+        ai:
+          type: object
+          required: [tasks, calls_today, daily_call_limit]
+          additionalProperties: false
+          properties:
+            tasks:
+              type: object
+              additionalProperties:
+                type: object
+                required: [provider, model]
+                additionalProperties: false
+                properties:
+                  provider: { type: string }
+                  model: { type: string }
+            calls_today: { type: integer }
+            daily_call_limit: { type: integer }
+
+    BlockSummary:
+      type: object
+      required: [number, hash, day_label, timestamp, txs, events]
+      additionalProperties: false
+      properties:
+        number: { type: integer }
+        hash: { type: string }
+        day_label: { type: string }
+        timestamp: { type: string }
+        txs:
+          type: array
+          items:
+            type: object
+            required: [type, sender, ok]
+            additionalProperties: false
+            properties:
+              type: { type: string }
+              sender: { type: string }
+              ok: { type: boolean }
+              error: { type: string }
+        events: { type: integer }
+
+    TxResult:
+      type: object
+      required: [block, ok]
+      additionalProperties: false
+      properties:
+        block: { type: integer }
+        ok: { type: boolean }
+        error: { type: string }

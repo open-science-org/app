@@ -1,5 +1,5 @@
 // The payout waterfall, approval rules and settlement queue (OIP-14 sections 3, 7, 8, 9 and 10).
-import { BPS, IDEA_UNITS, acct, transfer, type Idea, type State } from './state.ts';
+import { BPS, IDEA_UNITS, acct, transfer, type Idea, type State, type WeightSet } from './state.ts';
 
 export type Event =
   | { type: 'received'; idea: string; amount: string }
@@ -48,7 +48,9 @@ export function isEarlier(parent: Idea, child: Idea): boolean {
 }
 
 /** Records a complete weight set for a child (OIP-14 section 7), carrying held amounts (section 8.4). */
-export function approveWeights(s: State, childId: string, parents: Record<string, number>) {
+export function approveWeights(
+  s: State, childId: string, parents: Record<string, number>, approval: Pick<WeightSet, 'authority' | 'basis'>,
+) {
   const child = s.ideas[childId];
   if (!child) throw new Error(`unknown idea ${childId}`);
   let sum = 0;
@@ -56,6 +58,8 @@ export function approveWeights(s: State, childId: string, parents: Record<string
     const parent = s.ideas[j];
     if (!parent) throw new Error(`unknown parent ${j}`);
     if (j === childId) throw new Error('an idea cannot be its own parent');
+    if (parent.tier === 'read-only') throw new Error(`parent ${j} is a read-only import, which has no payout edges (OIP-14 section 7)`);
+    if (parent.status === 'removed') throw new Error(`parent ${j} was removed`);
     if (!Number.isInteger(w) || w <= 0) throw new Error('weights must be positive integers in bps');
     if (!isEarlier(parent, child)) throw new Error(`parent ${j} is not older than the child (OIP-14 section 3)`);
     sum += w;
@@ -77,7 +81,7 @@ export function approveWeights(s: State, childId: string, parents: Record<string
     wf.num = (carry * BPS).toString();
     wf.paid = {};
   }
-  child.weights = Object.keys(parents).length ? { parents: { ...parents }, effective_block: s.height } : null;
+  child.weights = Object.keys(parents).length ? { parents: { ...parents }, effective_block: s.height, ...approval } : null;
 }
 
 /** Pays `amount` out of the idea account to IDEA holders, pro rata, carrying the residue (section 8.2). */

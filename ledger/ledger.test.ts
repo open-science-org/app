@@ -4,21 +4,25 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Chain } from '../src/chain.ts';
-import { addressOf, devKey, signMessage } from '../src/crypto.ts';
-import { DEV_PARAMS, advance, devKeys, seedDemo } from '../src/demo.ts';
-import { makeTx, ownerMessage, replay, versionId, type Block } from '../src/ledger.ts';
-import { ONE_OSO, acct, balance, stateHash, type Params } from '../src/state.ts';
-import { importVersion, submissionVersion } from '../src/versions.ts';
+import { Chain } from './chain.ts';
+import { addressOf, devKey, signMessage } from './crypto.ts';
+import { DEV_PARAMS, advance, devKeys, seedDevLedger } from '../api/demo.ts';
+import { makeTx, ownerMessage, replay, versionId, type Block } from './ledger.ts';
+import { ONE_OSO, acct, balance, stateHash, type Params } from './state.ts';
+import { importVersion, submissionVersion, type SeedWork } from './versions.ts';
 
 const OSO = (n: number) => BigInt(n) * ONE_OSO;
 const op = devKeys.operator;
 const key = (name: string) => devKey('test:' + name);
 const addr = (name: string) => addressOf(key(name));
 
-function fixture(keyName: string, date: string, parents: Record<string, number> = {}) {
-  return { key: keyName, title: `Work ${keyName}`, summary: 's', authors: ['X'], arxiv: `0000.${keyName}`, date, parents };
+function fixture(keyName: string, date: string): SeedWork {
+  return {
+    key: keyName, tier: 'curated', title: `Work ${keyName}`, abstract: 's', authors: ['X'], date, date_precision: 'day',
+    type: 'paper', venue: '', citation_count: 0, external_ids: { s2: keyName }, references: [],
+  };
 }
+const BASIS = 'test';
 
 /** Genesis plus users with balances; returns the chain and a helper to send transactions. */
 function setup(overrides: Partial<Params> = {}, bootstrap = OSO(100_000), grants: Record<string, bigint> = {}) {
@@ -36,7 +40,7 @@ function importWorks(chain: Chain, works: ReturnType<typeof fixture>[]) {
   const txs = works.map((f, i) => {
     const v = importVersion(f, addressOf(op));
     ids[f.key] = versionId(v);
-    return makeTx(op, chain.state, 'idea.import', { version: v, origin_date: f.date, tier: 'curated' }, i);
+    return makeTx(op, chain.state, 'idea.import', { version: v, origin_date: f.date, tier: f.tier }, i);
   });
   chain.commit(txs);
   return ids;
@@ -53,9 +57,9 @@ function submitAndPublish(chain: Chain, owners: [string, number][], parents: [st
   const id = versionId(version);
   const owner_signatures = Object.fromEntries(owners.map(([n]) => [addr(n), signMessage(key(n), ownerMessage(id))]));
   const sub = chain.commit([makeTx(key(owners[0][0]), chain.state, 'idea.submit', { version, owner_signatures })]);
-  assert.ok(sub.txs[0].ok, sub.txs[0].error);
+  assert.ok(sub.txs[0].ok, sub.txs[0].error ?? '');
   const adm = chain.commit([makeTx(op, chain.state, 'idea.admit', { work_id: id, validators: validators.map(addr) })]);
-  assert.ok(adm.txs[0].ok, adm.txs[0].error);
+  assert.ok(adm.txs[0].ok, adm.txs[0].error ?? '');
   advance(chain, chain.state.params!.challenge_window);
   assert.equal(chain.state.ideas[id].status, 'published');
   return id;
@@ -91,7 +95,7 @@ test('OIP-14 waterfall test case: 100 OSO to I gives P1 12, P2 8, A 48, B 20, in
   const ids = importWorks(chain, [fixture('p1', '2020-01-01'), fixture('p2', '2020-01-02')]);
   const child = submitAndPublish(chain, [['a', 6_000], ['b', 2_500], ['investor', 1_500]], [[ids.p1, 6_000], [ids.p2, 4_000]]);
   const b = chain.commit([fund(chain, 'funder', child, OSO(100))]);
-  assert.ok(b.txs[0].ok, b.txs[0].error);
+  assert.ok(b.txs[0].ok, b.txs[0].error ?? '');
   const paid = (to: string) => sumEvents([b], (e) => e.type === 'distributed' && e.idea === child && e.to === to);
   assert.equal(paid(acct.user(addr('a'))), OSO(48));
   assert.equal(paid(acct.user(addr('b'))), OSO(20));
@@ -105,7 +109,7 @@ test('OIP-14 waterfall test case: 100 OSO to I gives P1 12, P2 8, A 48, B 20, in
 function splitSetup() {
   const chain = setup({ dust: '2000', round_blocks: 100 }, OSO(100_000), { funder: OSO(10) });
   const ids = importWorks(chain, [fixture('parent', '2020-01-01'), fixture('child', '2021-01-01')]);
-  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.parent]: 10_000 } })]);
+  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.parent]: 10_000 }, basis: BASIS })]);
   return { chain, ids };
 }
 
@@ -146,9 +150,9 @@ test('OIP-14 split payments: 9,990 at once and ten payments of 999 both give the
 test('a re-approved weight set changes later payouts and leaves earlier ones unchanged', () => {
   const chain = setup({ dust: (10n ** 30n).toString(), round_blocks: 100 }, OSO(100_000), { funder: OSO(1_000) });
   const ids = importWorks(chain, [fixture('old', '2020-01-01'), fixture('new', '2020-01-02'), fixture('child', '2021-01-01')]);
-  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.old]: 10_000 } })]);
+  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.old]: 10_000 }, basis: BASIS })]);
   chain.commit([fund(chain, 'funder', ids.child, OSO(100))]); // 20 owed to old, held below dust
-  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.new]: 10_000 } })]);
+  chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.new]: 10_000 }, basis: BASIS })]);
   chain.commit([fund(chain, 'funder', ids.child, OSO(100))]); // 20 owed to new
   finishRound(chain);
   assert.equal(settledTo(chain, ids.old), OSO(20));
@@ -159,10 +163,18 @@ test('a parent with the same or a later origin date is rejected (OIP-14 section 
   const chain = setup();
   const ids = importWorks(chain, [fixture('a', '2021-01-01'), fixture('b', '2021-01-01'), fixture('c', '2022-01-01')]);
   const b = chain.commit([
-    makeTx(op, chain.state, 'weights.approve', { work_id: ids.a, parents: { [ids.b]: 10_000 } }),
-    makeTx(op, chain.state, 'weights.approve', { work_id: ids.a, parents: { [ids.c]: 10_000 } }, 1),
+    makeTx(op, chain.state, 'weights.approve', { work_id: ids.a, parents: { [ids.b]: 10_000 }, basis: BASIS }),
+    makeTx(op, chain.state, 'weights.approve', { work_id: ids.a, parents: { [ids.c]: 10_000 }, basis: BASIS }, 1),
   ]);
   assert.deepEqual(b.txs.map((t) => t.ok), [false, false]);
+});
+
+test('a read-only import cannot be a payout parent (OIP-14 section 7)', () => {
+  const chain = setup();
+  const ids = importWorks(chain, [{ ...fixture('ro', '2020-01-01'), tier: 'read-only' }, fixture('child', '2021-01-01')]);
+  const b = chain.commit([makeTx(op, chain.state, 'weights.approve', { work_id: ids.child, parents: { [ids.ro]: 10_000 }, basis: BASIS })]);
+  assert.equal(b.txs[0].ok, false);
+  assert.match(b.txs[0].error!, /read-only/);
 });
 
 test('removal burns the whole escrowed mint and slashes the stake (OIP-8 section 4.7)', () => {
@@ -179,7 +191,7 @@ test('removal burns the whole escrowed mint and slashes the stake (OIP-8 section
   const supply = BigInt(chain.state.minted) - BigInt(chain.state.burned);
   const fundBefore = balance(chain.state, acct.fund);
   const b = chain.commit([makeTx(op, chain.state, 'idea.remove', { work_id: id })]);
-  assert.ok(b.txs[0].ok, b.txs[0].error);
+  assert.ok(b.txs[0].ok, b.txs[0].error ?? '');
   assert.equal(BigInt(chain.state.minted) - BigInt(chain.state.burned), supply - BigInt(chain.state.ideas[id].mint));
   assert.equal(balance(chain.state, acct.fund), fundBefore + OSO(10));
   advance(chain, DEV_PARAMS.challenge_window + 1);
@@ -223,7 +235,7 @@ test('a transaction signed by someone else is rejected', () => {
 test('replaying the published log reproduces every block; a tampered block is detected (OIP-13 section 5)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'oso-'));
   const chain = new Chain(op, dir);
-  seedDemo(chain);
+  seedDevLedger(chain);
   const loaded = Chain.load('', dir);
   assert.equal(stateHash(loaded.state), stateHash(chain.state));
   assert.equal(stateHash(replay(chain.blocks)), stateHash(chain.state));
@@ -240,10 +252,10 @@ test('replaying the published log reproduces every block; a tampered block is de
 
 test('the demo ledger conserves supply and keeps imported value as unresolved liabilities', () => {
   const chain = new Chain(op);
-  const { ids } = seedDemo(chain);
+  const { lora } = seedDevLedger(chain);
   const s = chain.state;
   const total = Object.values(s.balances).reduce((a, b) => a + BigInt(b), 0n);
   assert.equal(total, BigInt(s.minted) - BigInt(s.burned));
-  assert.ok(balance(s, acct.unresolved(ids.lora)) > 0n);
+  assert.ok(balance(s, acct.unresolved(lora)) > 0n);
   assert.equal(s.queue.length, 0);
 });

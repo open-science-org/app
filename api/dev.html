@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSO node</title>
+<title>OSO API dev page</title>
 <style>
   :root { --bg: #fbfaf8; --fg: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --card: #fff; --accent: #2f6f5e; --bad: #b3261e; }
   @media (prefers-color-scheme: dark) {
@@ -36,15 +36,16 @@
 </head>
 <body>
 <header>
-  <b>OSO node</b>
+  <b>OSO API · dev page</b>
   <span id="st" class="muted">loading…</span>
-  <span class="muted">Simulated units only. Development tool, not the app.</span>
+  <span class="muted">Simulated units only. A reference for the API, not the app.</span>
 </header>
 <main>
   <div>
     <section>
       <input id="q" placeholder="Search ideas" style="width: 100%">
-      <ul id="ideas" class="list" style="margin-top: 8px"></ul>
+      <div id="count" class="muted" style="margin-top: 6px"></div>
+      <ul id="ideas" class="list" style="margin-top: 4px"></ul>
     </section>
     <section>
       <h2>Blocks</h2>
@@ -80,7 +81,8 @@ async function refresh() {
 }
 
 async function loadIdeas() {
-  const { ideas } = await api('/v1/ideas?q=' + encodeURIComponent($('q').value));
+  const { ideas, total } = await api('/v1/ideas?per_page=100&q=' + encodeURIComponent($('q').value));
+  $('count').textContent = `${total} ideas${total > 100 ? ' (first 100 shown)' : ''}`;
   $('ideas').innerHTML = ideas.map((i) => `<li data-id="${i.work_id}" class="${i.work_id === selected ? 'sel' : ''}">
     ${esc(i.title)}<br><span class="muted">${i.origin_date.slice(0, 4)} · ${i.status}${i.tier ? ' · ' + i.tier : ''} · received ${i.received.oso} OSO</span></li>`).join('');
   for (const li of $('ideas').children) li.onclick = () => show(li.dataset.id);
@@ -117,6 +119,7 @@ async function show(id) {
     ${d.parents.length ? `<table><tr><th>Parent</th><th class="n">Weight</th><th class="n">Owed now</th></tr>${d.parents.map((p) =>
       `<tr><td>${link(p)}</td><td class="n">${pct(p.weight_bps)}</td><td class="n">${p.owed.oso}</td></tr>`).join('')}</table>`
       : '<span class="muted">No approved parents: this idea keeps everything it receives.</span>'}
+    ${d.registry.approval ? `<div class="muted" style="margin-top: 6px">Weights approved by ${d.registry.approval.authority} at block ${d.registry.approval.effective_block}: ${esc(d.registry.approval.basis)}</div>` : ''}
     <h2 style="margin-top: 12px">Built on by</h2>
     ${d.children.length ? `<table>${d.children.map((c) => `<tr><td>${link(c)}</td><td class="n">${pct(c.weight_bps)}</td></tr>`).join('')}</table>` : '<span class="muted">Nothing yet.</span>'}
   </section>
@@ -129,7 +132,16 @@ async function show(id) {
     </table>
     <h2 style="margin-top: 12px">IDEA holders</h2>
     <table><tr><th>Account</th><th class="n">Units</th><th class="n">Balance</th></tr>${d.registry.holders.map((h) =>
-      `<tr><td><code>${esc(h.account.startsWith('unresolved:') ? 'unresolved claims (imported work)' : h.account)}</code></td><td class="n">${h.units.toLocaleString()}</td><td class="n">${h.balance.oso}</td></tr>`).join('')}</table>
+      `<tr><td>${esc(h.label)}</td><td class="n">${h.units.toLocaleString()}</td><td class="n">${h.balance.oso}</td></tr>`).join('')}</table>
+  </section>
+  <section>
+    <h2>Cites ${d.cites.length} · cited by ${d.cited_by_ideas.length} in the graph</h2>
+    <div class="muted">${d.cites.slice(0, 12).map(link).join(' · ')}</div>
+  </section>
+  <section>
+    <h2>Ask about it</h2>
+    <div class="row"><input id="ask" style="flex: 1" value="What does this build on?"><button onclick="askIt()">Ask</button></div>
+    <div id="answer" style="margin-top: 8px"></div>
   </section>
   <section>
     <h2>Fund this idea</h2>
@@ -145,9 +157,16 @@ async function show(id) {
 
 async function simulate() {
   const r = await api('/v1/simulate/fund', { work_id: selected, amount: $('amt').value });
-  $('sim').innerHTML = `<table><tr><th>Idea</th><th class="n">Receives</th><th class="n">To holders</th><th class="n">Passes up</th></tr>${r.flows.map((f) =>
-    `<tr><td>${esc(f.title)}</td><td class="n">${f.received.oso}</td><td class="n">${f.to_holders.oso}</td><td class="n">${f.passed_up.oso}</td></tr>`).join('')}</table>
+  $('sim').innerHTML = `<table><tr><th class="n">Step</th><th>Idea</th><th class="n">Receives</th><th class="n">To holders</th><th class="n">Passes up</th></tr>${r.flows.map((f) =>
+    `<tr><td class="n">${f.depth}</td><td>${esc(f.title)}</td><td class="n">${f.received.oso}</td><td class="n">${f.to_holders.oso}</td><td class="n">${f.passed_up.oso}</td></tr>`).join('')}</table>
     <div class="muted">Dry run, settled all the way up. Nothing is recorded.</div>`;
+}
+
+async function askIt() {
+  $('answer').textContent = '…';
+  const r = await api('/v1/chat', { work_id: selected, messages: [{ role: 'user', content: $('ask').value }] });
+  $('answer').innerHTML = r.error ? `<span class="bad">${esc(r.error)}</span>` :
+    `<div>${esc(r.answer)}</div><div class="muted">AI-generated (${esc(r.provider)}/${esc(r.model)}). Cites: ${r.citations.map((c) => `<a onclick="show('${c.work_id}')">${esc(c.title)}</a>`).join(' · ')}</div>`;
 }
 
 async function fundIt() {

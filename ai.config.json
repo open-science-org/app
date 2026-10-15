@@ -1,0 +1,11 @@
+{
+  "note": "AI providers and tasks (OSO/docs/ui/ai.md). Keys come from environment variables, never from this file. The 'stub' provider needs no model and answers from the graph alone, so the API runs offline.",
+  "providers": {
+    "stub":       { "base_url": "" },
+    "local":      { "base_url": "http://localhost:11434/v1" },
+    "openrouter": { "base_url": "https://openrouter.ai/api/v1", "api_key_env": "OPENROUTER_API_KEY" }
+  },
+  "tasks": {
+    "chat": { "provider": "stub", "model": "stub", "max_tokens": 600, "daily_call_limit": 500 }
+  }
+}

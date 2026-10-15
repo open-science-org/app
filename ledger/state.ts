@@ -46,6 +46,14 @@ export interface Version {
   registrant: string;
 }
 
+/** An approved weight set (OIP-14 section 7.1): who approved it, on what basis, from which block. */
+export interface WeightSet {
+  parents: Record<string, number>;
+  effective_block: number;
+  authority: 'admission' | 'panel';
+  basis: string;
+}
+
 export type IdeaStatus = 'imported' | 'submitted' | 'admitted' | 'published' | 'removed';
 
 /** Payout waterfall counters for the current weight set (OIP-14 section 8). */
@@ -71,7 +79,7 @@ export interface Idea {
   /** IDEA units by account (OIP-8 section 9). */
   holders: Record<string, number>;
   alpha: number;
-  weights: { parents: Record<string, number>; effective_block: number } | null;
+  weights: WeightSet | null;
   wf: Waterfall;
   submitter: string | null;
   stake: string;
@@ -113,6 +121,25 @@ export function emptyState(): State {
     external_index: {},
     queue: [],
   };
+}
+
+/** Deep-freezes an idea version on registration: versions are immutable (OIP-16 section 4). */
+export function freezeVersion<T>(v: T): T {
+  if (v && typeof v === 'object' && !Object.isFrozen(v)) {
+    Object.freeze(v);
+    for (const x of Object.values(v as object)) freezeVersion(x);
+  }
+  return v;
+}
+
+/** Copies the state, sharing the immutable version objects instead of copying them. */
+export function cloneState(s: State): State {
+  const ideas: Record<string, Idea> = {};
+  for (const [k, idea] of Object.entries(s.ideas)) {
+    const { current, ...rest } = idea;
+    ideas[k] = { ...structuredClone(rest), current };
+  }
+  return { ...structuredClone({ ...s, ideas: {} }), ideas };
 }
 
 export function stateHash(s: State): string {

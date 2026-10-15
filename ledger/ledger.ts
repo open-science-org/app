@@ -5,7 +5,7 @@
 // an upheld challenge, and imported works keep their IDEA units in the unresolved-claims account.
 import { canonicalize, hashOf, merkleRoot, recoverSigner, signMessage, addressOf } from './crypto.ts';
 import {
-  BPS, IDEA_UNITS, acct, balance, burnFrom, emptyState, mintTo, stateHash, totalBalances, transfer,
+  BPS, IDEA_UNITS, acct, balance, burnFrom, cloneState, emptyState, freezeVersion, mintTo, stateHash, totalBalances, transfer,
   type Idea, type Params, type State, type Version,
 } from './state.ts';
 import { approveWeights, isEarlier, processQueue, queueAllOwed, receive, type Event } from './waterfall.ts';
@@ -106,7 +106,7 @@ function newIdea(s: State, v: Version, id: string, kind: Idea['kind'], origin: s
   return {
     work_id: id,
     versions: [id],
-    current: v,
+    current: freezeVersion(structuredClone(v)),
     kind,
     tier: null,
     origin_date: origin,
@@ -174,7 +174,8 @@ const handlers: Record<string, Handler> = {
     if (!idea || idea.kind !== 'import' || idea.tier !== 'curated') {
       throw new Error('the panel approves weights only for curated imports; submissions get theirs at admission');
     }
-    approveWeights(s, idea.work_id, tx.body.parents);
+    if (typeof tx.body.basis !== 'string' || !tx.body.basis) throw new Error('state the basis for the weights');
+    approveWeights(s, idea.work_id, tx.body.parents, { authority: 'panel', basis: tx.body.basis });
   },
 
   // OIP-16, OIP-10 section 4, OIP-8 section 8: signed by every owner, stake locked.
@@ -234,7 +235,7 @@ const handlers: Record<string, Handler> = {
     }
     for (const x of validators) transfer(s, acct.fund, acct.user(x), fee);
     const parents = Object.fromEntries(idea.current.parents.map((p) => [s.version_index[p.version_id], p.weight_bps]));
-    approveWeights(s, idea.work_id, parents);
+    approveWeights(s, idea.work_id, parents, { authority: 'admission', basis: 'owners\' proposed weights, approved by admission' });
     const remaining = BigInt(s.params!.supply_cap) - BigInt(s.minted);
     const m = remaining / BigInt(s.params!.mint_rate_inv);
     mintTo(s, acct.escrow(idea.work_id), m);
@@ -326,7 +327,7 @@ export interface Header {
 export function execute(prev: State, header: Header, txs: Tx[]): { state: State; results: TxResult[]; events: Event[] } {
   if (header.number !== prev.height + 1) throw new Error(`expected block ${prev.height + 1}`);
   if (prev.day && header.day_label < prev.day) throw new Error('day labels must not decrease');
-  let s = structuredClone(prev);
+  let s = cloneState(prev);
   s.height = header.number;
   s.day = header.day_label;
   const results: TxResult[] = [];
@@ -335,7 +336,7 @@ export function execute(prev: State, header: Header, txs: Tx[]): { state: State;
     const bad = checkEnvelope(s, tx);
     if (bad) throw new Error(`invalid transaction envelope: ${bad}`);
     const handler = handlers[tx.type];
-    const before = structuredClone(s);
+    const before = cloneState(s);
     const txEvents: Event[] = [];
     try {
       if (!handler) throw new Error(`unknown transaction type ${tx.type}`);
