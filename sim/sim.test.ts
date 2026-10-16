@@ -1,21 +1,30 @@
-// Simulator tests: the fast waterfall against the ledger, traditional as a special case, accounting,
-// determinism, and the model's two main predictions on fixed seeds.
+// Simulator tests: the waterfall against the ledger, the simple model against exact predictions,
+// traditional rules as a special case, accounting, reproducibility, the model's predictions, and
+// the configuration layer (validation, plugins, file worlds, experiment expansion).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Chain } from '../ledger/chain.ts';
 import { makeTx, versionId } from '../ledger/ledger.ts';
 import { ONE_OSO, acct, balance } from '../ledger/state.ts';
 import { importVersion } from '../ledger/versions.ts';
 import { DEV_PARAMS, devAddress, devKeys } from '../api/demo.ts';
+import { hiddenDepth, sharedDepth } from './analytic.ts';
+import { loadScenario, type Scenario } from './config.ts';
+import { expand, loadExperiment } from './experiment.ts';
 import { run } from './model.ts';
 import { Rng } from './rng.ts';
-import { BASE, SETTINGS } from './settings.ts';
-import { attributionValue, makeWorld, shares } from './world.ts';
+import { scenarioFor } from './settings.ts';
+import { attributionValue, shares, worlds } from './world.ts';
 
-const small = { ...BASE.world, levels: 4, width: 3, targets: [{ level: 4, count: 1 }] };
+const worldOf = (sc: Scenario, seed: number) => worlds.create(sc.world, 'world')(sc.success, new Rng(seed).fork(1));
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 test("the simulator's waterfall pays what the ledger's OIP-14 waterfall pays", () => {
-  const world = makeWorld(small, new Rng(7));
+  const sc = loadScenario(null, { world: { levels: 4, width: 3, targets: [{ level: 4, count: 1 }] } });
+  const world = worldOf(sc, 7);
   // Integer weights in bps, as the ledger stores them, used by both sides.
   const bps = world.weights.map((ws) => {
     const out = ws.map((w) => Math.floor(w * 10_000));
@@ -55,8 +64,26 @@ test("the simulator's waterfall pays what the ledger's OIP-14 waterfall pays", (
   }
 });
 
+test('the simple model matches its exact predictions', () => {
+  const X = 320;
+  const p = 0.2;
+  for (const [N, kind] of [[4, 'immediate'], [4, 'finished-only']] as const) {
+    const sc = loadScenario(null, {
+      world: { kind: 'chain', length: 200 },
+      success: { p0: p, eta: 1 },
+      budget: { X, perAgentPerRound: 1, allocation: { kind: 'equal' } },
+      'agents.mix': { foundation: 0, racer: 0, explorer: 0, specialist: 0, freeRider: 0, gamer: 0, plain: N },
+      'rules.visibility': { kind },
+    });
+    const depths = Array.from({ length: 300 }, (_, k) => run(sc, 300 + k).deepestProved);
+    const exact = kind === 'immediate' ? sharedDepth(X, p) : hiddenDepth(X, p, N);
+    const se = exact.sd / Math.sqrt(depths.length);
+    assert.ok(Math.abs(mean(depths) - exact.mean) < 4 * se, `${kind}: simulated ${mean(depths)}, exact ${exact.mean} ± ${se}`);
+  }
+});
+
 test('with traditional rules, only targets have attribution value', () => {
-  const world = makeWorld(BASE.world, new Rng(3));
+  const world = worldOf(loadScenario(), 3);
   const S = attributionValue(world, shares(world, 1, world.weights), world.weights, 0, 1);
   for (let r = 0; r < world.n; r++) if (!world.isTarget[r]) assert.equal(S[r], 0);
   const osoS = attributionValue(world, shares(world, 0.8, world.weights), world.weights, 0.15, 1);
@@ -64,50 +91,75 @@ test('with traditional rules, only targets have attribution value', () => {
 });
 
 test('runs are reproducible from their seed', () => {
-  const a = run({ ...BASE, rules: SETTINGS.osoChoice.rules, seed: 11 });
-  const b = run({ ...BASE, rules: SETTINGS.osoChoice.rules, seed: 11 });
-  assert.deepEqual(a, b);
+  assert.deepEqual(run(scenarioFor('osoChoice'), 11), run(scenarioFor('osoChoice'), 11));
 });
 
 test('everything paid out equals mints plus bounties of solved targets', () => {
-  for (const key of Object.keys(SETTINGS)) {
-    const r = run({ ...BASE, rules: SETTINGS[key].rules, seed: 5 });
-    const world = makeWorld(BASE.world, new Rng(5).fork(1));
-    const solvedBounty = r.targetsSolved > 0 ? r.totalEarnings - (r.published + r.trivialPublished) * BASE.m : 0;
+  for (const setting of ['traditional', 'oso', 'creditOnly', 'sharingOnly', 'traditionalChoice', 'osoChoice']) {
+    const sc = scenarioFor(setting);
+    const r = run(sc, 5);
+    const world = worldOf(sc, 5);
+    const solvedBounty = r.totalEarnings - (r.published + r.trivialPublished) * sc.rules.mint;
     const bounties = world.targets.map((t) => world.bounty[t]);
-    // Solved bounties must be a sum of distinct target bounties.
     const subsetSums = bounties.reduce<number[]>((sums, x) => [...sums, ...sums.map((y) => y + x)], [0]);
-    assert.ok(subsetSums.some((x) => Math.abs(x - solvedBounty) < 1e-6), `${key}: unexplained payout ${solvedBounty}`);
+    assert.ok(subsetSums.some((x) => Math.abs(x - solvedBounty) < 1e-6), `${setting}: unexplained payout ${solvedBounty}`);
   }
 });
 
-const mean = (key: string, f: (r: ReturnType<typeof run>) => number, over: object = {}) => {
-  const rs = Array.from({ length: 12 }, (_, k) => run({ ...BASE, ...over, rules: SETTINGS[key].rules, seed: 100 + k }));
-  return rs.reduce((a, r) => a + f(r), 0) / rs.length;
-};
-
 test('prediction 1: sharing pools search, so OSO reaches deeper than traditional for the same budget', () => {
-  assert.ok(mean('oso', (r) => r.frontier) > mean('traditional', (r) => r.frontier) + 1);
+  const frontier = (setting: string) => mean(Array.from({ length: 12 }, (_, k) => run(scenarioFor(setting), 100 + k).frontier));
+  assert.ok(frontier('oso') > frontier('traditional') + 1);
 });
 
 test('prediction 2: with enough flow-back, agents choose to share', () => {
-  const runs = (alpha: number) => Array.from({ length: 12 }, (_, k) =>
-    run({ ...BASE, psi: 0.1, rules: { alpha, c: alpha === 1 ? 0 : 0.15, visibility: { kind: 'choice' } }, seed: 200 + k }));
-  const sharing = (alpha: number) => runs(alpha).reduce((a, r) => a + r.sharingRate, 0) / 12;
+  const sharing = (alpha: number) => mean(Array.from({ length: 12 }, (_, k) =>
+    run(loadScenario(null, { 'behaviour.psi': 0.1, rules: { alpha, c: alpha === 1 ? 0 : 0.15, visibility: { kind: 'choice' } } }), 200 + k).sharingRate));
   assert.ok(sharing(0.3) > sharing(1) + 0.3);
 });
 
-test('the simple model matches its exact predictions', async () => {
-  const { hiddenDepth, sharedDepth } = await import('./analytic.ts');
-  const X = 320;
-  const p = 0.2;
-  const world = { ...BASE.world, levels: 200, width: 1, maxPrereqs: 1, areas: 1, p0: p, eta: 1, targets: [{ level: 200, count: 1 }] };
-  for (const [N, kind] of [[4, 'immediate'], [4, 'finished-only']] as const) {
-    const depths = Array.from({ length: 300 }, (_, k) =>
-      run({ ...BASE, world, mix: { plain: N }, X, T: X / N, rho: 0, rules: { alpha: 1, c: 0, visibility: { kind } }, seed: 300 + k }).deepestProved);
-    const m = depths.reduce((a, b) => a + b, 0) / depths.length;
-    const exact = kind === 'immediate' ? sharedDepth(X, p) : hiddenDepth(X, p, N);
-    const se = exact.sd / Math.sqrt(depths.length);
-    assert.ok(Math.abs(m - exact.mean) < 4 * se, `${kind}: simulated ${m}, exact ${exact.mean} ± ${se}`);
-  }
+test('misspelled settings and unknown plugin parameters are rejected', () => {
+  assert.throws(() => loadScenario(null, { 'rules.alhpa': 0.5 }), /unknown setting "rules.alhpa"/);
+  assert.throws(() => loadScenario(null, { 'rules.alpha': 'high' }), /rules.alpha must be a number/);
+  assert.throws(() => loadScenario(null, { 'agents.mix.wizard': 2 }), /not in agents.archetypes/);
+  assert.throws(() => run(loadScenario(null, { 'rules.visibility': { kind: 'delayed', dd: 2 } }), 1), /has no parameter "dd"/);
+  assert.throws(() => run(loadScenario(null, { 'rules.visibility': { kind: 'telepathy' } }), 1), /unknown visibility "telepathy"/);
+});
+
+test('a component whose kind changes does not keep the old kind\'s parameters', () => {
+  const sc = loadScenario(null, { world: { kind: 'chain', length: 10 } });
+  assert.deepEqual(sc.world, { kind: 'chain', length: 10 });
+});
+
+test('a world read from a file runs, with levels derived from prerequisites', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'oso-sim-'));
+  const path = join(dir, 'dag.json');
+  writeFileSync(path, JSON.stringify({ nodes: [
+    { id: 'a' }, { id: 'b' }, { id: 'ab', prereqs: ['a', 'b'] }, { id: 'goal', prereqs: ['ab'], bounty: 10, p: 0.5 },
+  ] }));
+  const sc = loadScenario(null, { world: { kind: 'file', path }, 'measures.targetLevel': 3 });
+  const world = worldOf(sc, 1);
+  assert.deepEqual(world.level, [1, 1, 2, 3]);
+  assert.equal(world.p[3], 0.5);
+  assert.deepEqual(world.targets, [3]);
+  const r = run(sc, 1);
+  assert.equal(r.targetsSolved, 1);
+});
+
+test('experiments expand factors, presets, patches and exclusions into rows', () => {
+  const psi = expand(loadExperiment('alpha-psi'));
+  assert.equal(psi.length, 27);
+  assert.ok(!psi.some((r) => r.scenario.rules.alpha === 1 && r.scenario.rules.c === 0.15));
+  const sweep = expand(loadExperiment('alpha-sweep'));
+  assert.equal(sweep[0].scenario.rules.c, 0);
+  assert.equal(sweep[1].scenario.rules.c, 0.15);
+  const settings = expand(loadExperiment('settings'));
+  assert.deepEqual(settings[1].scenario.rules, scenarioFor('oso').rules);
+  const sens = expand(loadExperiment('sensitivity'));
+  assert.equal(sens.length, 8);
+  assert.equal(sens[6].scenario.agents.mix.gamer, 0);
+});
+
+test('delayed visibility publishes lemmas the stated number of rounds later', () => {
+  const r = run(loadScenario(null, { 'rules.visibility': { kind: 'delayed', d: 3 } }), 4);
+  assert.ok(r.publicationLag >= 3, `lag ${r.publicationLag}`);
 });

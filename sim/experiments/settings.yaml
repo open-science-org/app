@@ -1,0 +1,17 @@
+id: settings
+title: The six rule settings on the default world
+description: >-
+  Traditional research (α = 1, c = 0, finished-only), OSO (α = 0.8, c = 0.15) with immediate and with
+  agent's-choice visibility, and the mixed corners. Same world parameters, agents and budget in every
+  setting; each seed gives the same world and agents across settings.
+seeds: 100
+factors:
+  - name: setting
+    levels:
+      - { label: Traditional, preset: traditional }
+      - { label: OSO (immediate), preset: oso }
+      - { label: 'Flow-back, finished-only', preset: creditOnly }
+      - { label: 'No flow-back, immediate', preset: sharingOnly }
+      - { label: 'No flow-back, choice', preset: traditionalChoice }
+      - { label: OSO (choice), preset: osoChoice }
+columns: [frontier, reachTarget, speed, cost, spend, productivity, breadth, waste, credit, sharing, hoarded, gamerShare, trivialSpend]

@@ -1,0 +1,20 @@
+id: simple
+title: 'The simple model: one chain, shared vs. hidden progress'
+description: >-
+  A single chain of 300 results, each with success chance p = 0.2 per attempt; N identical agents;
+  X = 640 attempts in total, one per agent per round. Shared: every result is published and taken up
+  at once. Hidden: nothing is published until the end of the chain, which no one reaches. Measure:
+  the deepest result proved by anyone. The exact values come from sim/analytic.ts.
+seeds: 1000
+set:
+  world: { kind: chain, length: 300 }
+  success: { p0: 0.2, eta: 1 }
+  budget: { X: 640, perAgentPerRound: 1, allocation: { kind: earnings-share, rho: 0 } }
+  agents.mix: { foundation: 0, racer: 0, explorer: 0, specialist: 0, freeRider: 0, gamer: 0, plain: 1 }
+factors:
+  - { name: N, path: agents.mix.plain, values: [1, 2, 4, 8, 16] }
+  - name: progress
+    levels:
+      - { label: shared, set: { rules.visibility: { kind: immediate } } }
+      - { label: hidden, set: { rules.visibility: { kind: finished-only } } }
+analysis: simple-chain-exact

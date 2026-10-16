@@ -1,25 +1,63 @@
 # OSO demo simulator
 
-A simulation of a community of research agents working under different incentive rules. It implements the model in [OSO/docs/demo-model.md](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md). Traditional research and OSO are two settings of the same rules.
+The simulator is one instantiation of the **[OSO demo experiment specification](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md)**. The specification defines every concept once:
+- results and the research tree;
+- attempts and success;
+- what agents know and what sharing conveys;
+- rewards, rounds and measures.
 
-**What it is for.** It checks the mechanics, finds which parameters matter, finds failure modes, and designs the experiment with real LLM agents. It is **not** evidence that OSO works in the real world; see [What this simulation can and cannot show](#what-this-simulation-can-and-cannot-show).
+**Read it first.** This document describes how the simulator implements it.
+
+What makes this instantiation the simulation:
+- **results are abstract:** nodes of a generated tree, with no content;
+- **the success oracle is chance:** each attempt succeeds with probability p, drawn by a seeded random-number generator;
+- **agents are formulas:** they follow a scoring rule with set traits.
+
+Traditional research and OSO are two settings of the same rules.
+
+**What it is for.** It checks the mechanics, finds which parameters matter, finds failure modes, and designs the experiment with real LLM agents. It is **not** evidence that OSO works in the real world; see [section 6](#6-what-this-simulation-can-and-cannot-show).
 
 ```sh
-npm run sim                                # list the experiments
-npm run sim -- simple                      # run one, print its table
-npm run sim -- all --save                  # run all and log results in sim/results/
-npm run sim -- settings --seeds 500 --save # more seeds
-npm test                                   # includes the simulator's tests
+npm run sim                                     # list the experiments
+npm run sim -- settings                         # run one, print its table
+npm run sim -- settings --set rules.screen=0.9  # change any setting for every row
+npm run sim -- my-experiment.yaml               # run your own experiment file
+npm run sim -- all --save                       # run all and log results in sim/results/
+npm run sim -- plugins                          # list worlds, rules, policies, columns
+npm test                                        # includes the simulator's tests
 ```
 
+Everything about a run is configuration. The defaults are in [scenarios/default.yaml](scenarios/default.yaml), which documents every setting, and experiments are YAML files in [experiments/](experiments/). See [3. Configuration and extending](#3-configuration-and-extending).
+
 Contents:
+- [0. The specification in the simulator](#0-the-specification-in-the-simulator)
 - [1. The simple model](#1-the-simple-model)
-- [2. The full model](#2-the-full-model)
-- [3. Parameters](#3-parameters)
+- [2. The default setup, as implemented](#2-the-default-setup-as-implemented)
+- [3. Configuration and extending](#3-configuration-and-extending)
 - [4. Measures](#4-measures)
 - [5. Results](#5-results)
 - [6. What this simulation can and cannot show](#6-what-this-simulation-can-and-cannot-show)
 - [7. Code and tests](#7-code-and-tests)
+
+## 0. The specification in the simulator
+
+Where each element of the [specification](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md) lives:
+
+| Specification | Configuration (scenario) | Code |
+| --- | --- | --- |
+| Research tree, targets, bounties (2.1) | `world` (plugin: `layered`, `chain`, `file`) | `world.ts` |
+| Success oracle and chance p (2.2) | `success` (p0, eta), agent `skill`, specialist boost | `model.ts`, `attempt`: succeeds if a random number is below p |
+| Knowledge, publishing, uptake (2.3) | `rules.visibility` (plugin), agent `reuse` | `rules.ts` (`visibilities`), `model.ts` (`publishBundle`, uptake loop) |
+| Rewards: mint, bounty, waterfall, screen (2.4) | `rules.alpha`, `rules.c`, `rules.mint`, `rules.screen`, `attribution.noise` | `world.ts` (`shares`, `attributionValue`), `model.ts` (`publishOne`, `payInto`) |
+| Budget, rounds, allocation (2.5) | `budget` (allocation plugin) | `rules.ts` (`allocations`), `model.ts` (`run`) |
+| One round (2.6) | — | `model.ts`, `run` |
+| The rules and settings (3) | `rules`; named settings in `presets.yaml` | `presets.yaml` |
+| Traits and archetypes (4.1) | `agents.archetypes`, `agents.mix` | `agents.ts` |
+| How simulated agents decide (4.2) | `behaviour` (policy plugin, perception noise, κ, ψ, rounds per level) | `model.ts` (`score`, `wouldPublish`), `rules.ts` (`policies`) |
+| Measures (5) | `measures.targetLevel`; columns in experiments | `measures.ts` |
+| Experiments and factors (7) | `experiments/*.yaml` | `experiment.ts`, `cli.ts` |
+
+**The one effect of sharing modelled here.** A published result lets other agents attempt what builds on it, after uptake. It carries no statement, method or failed attempts, and it is always correct and free to absorb ([specification, section 2.3](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md#23-knowledge-and-sharing)).
 
 ## 1. The simple model
 
@@ -57,11 +95,11 @@ The measure is the deepest result proved by anyone.
 
 This check also caught a flaw. The simulator's first random-number generator (mulberry32) lowered success rates by about 0.3%, about 3 standard errors over 7,000 runs. With xoshiro128\*\* the simulated depth matched the exact value (127.97 vs. 128.0 over 4,000 runs). Commit `77f0d88`.
 
-**What the simple model leaves out:** incentives. Here visibility is imposed. The full model adds the reasons agents would or wouldn't share, and what they get paid for.
+**What the simple model leaves out:** incentives. Here visibility is imposed. The default setup adds the reasons agents would or wouldn't share, and what they get paid for.
 
-## 2. The full model
+## 2. The default setup, as implemented
 
-The full model adds five things to the simple one:
+The default scenario ([scenarios/default.yaml](scenarios/default.yaml)), with the implementation details the [specification](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md) leaves to each instantiation. Compared with the simple model, it adds five things:
 1. **A branching world** with targets, bounties and dead ends.
 2. **Agents with different traits.**
 3. **Rewards:** a mint per result and a bounty per target, paid through the OSO waterfall.
@@ -87,6 +125,8 @@ That is 50% at level 1, 18% at level 3, 6.5% at level 5, 2.3% at level 7 and 1.4
 **Dead ends.** Results with no target below them. On average about 31 of the 80 results (over 200 worlds).
 
 **Attribution weights.** A result's prerequisites share its attribution in proportion to their cost, 1/p. Harder prerequisites count more. The ledger can use noisy weights (spread σ_w), but the default is exact.
+
+[world-example.svg](world-example.svg) draws the world of seed 1 (`node sim/draw-world.ts 1 > world.svg`).
 
 Every run draws a new world from its seed. Within an experiment, the same seed gives the same world and agents in every setting, so the settings are compared on identical worlds.
 
@@ -115,7 +155,7 @@ What each trait does:
 
 These values are guesses chosen to give a diverse population. They were not measured.
 
-### 2.3 The rules: the only thing the settings change (`settings.ts`)
+### 2.3 The rules: the only thing the settings change (`presets.yaml`)
 
 | Setting | α | c | Visibility |
 | --- | --- | --- | --- |
@@ -202,24 +242,89 @@ U = V · ( π − γ · √(π·(1 − π)) )
 - **κ = 1:** how much publishing raises a lemma's expected use.
 - **ψ = 0.5:** the scoop risk, meaning how much publishing raises a rival's chance of winning the target below. This is the parameter the results are most sensitive to.
 
-## 3. Parameters
+## 3. Configuration and extending
 
-All are in `settings.ts` (`BASE`) and `world.ts` (`DEFAULT_WORLD`). Each saved result records the full set in its `config.json`.
+### Scenarios
 
-| Parameter | Default | Meaning |
+A **scenario** is one complete setup: the world, the agents, the rules, the budget and the agents' behaviour. [scenarios/default.yaml](scenarios/default.yaml) holds every setting with its default and a comment. Any file or override changes only what it names.
+
+| Section | Settings | Defaults |
 | --- | --- | --- |
-| X, T | 1,200, 120 | Total compute, rounds |
-| m | 1 | Mint per new result |
-| θ | 0.5 | Chance the screen rejects a trivial result |
-| ρ | 0.5 | How much earnings buy compute |
-| λ_E | 0.7 | Smoothing of recent earnings |
-| σ_w | 0 | Noise in ledger attribution weights |
-| τ, ε | 0.3, 0.05 | Softmax temperature, exploration rate |
-| σ₀ | 1 | Scale of perception noise |
-| κ, ψ | 1, 0.5 | Publication boost, scoop risk |
-| rounds per level | 5 | Expected delay per level, for discounting |
-| L\* | 7 | Level used for the speed and cost measures |
-| World | 8 levels × 10, ≤ 3 prerequisites, 3 areas, p₀ = 0.5, η = 0.6, bounty 4·2^(ℓ−1) | Section 2.1 |
+| `world` | A world generator (`kind`) and its parameters | `layered`: 8 levels × 10, ≤ 3 prerequisites, 3 areas, targets at levels 3, 5, 7, 8, bounty 4·2^(ℓ−1) |
+| `success` | Success chance per attempt by level: p = p0 · eta^(level − 1) | p0 = 0.5, eta = 0.6 |
+| `attribution` | Noise in the ledger's attribution weights | 0 (exact) |
+| `agents` | Archetypes and their traits, the mix, specialist boost and penalty | 12 agents of six archetypes (section 2.2) |
+| `rules` | α, c, mint, validation screen θ, visibility rule | Traditional: α = 1, c = 0, finished-only, θ = 0.5 |
+| `budget` | Total compute X, rounds (or attempts per agent per round), stopping, allocation rule | X = 1,200 over 120 rounds; earnings share with ρ = 0.5 |
+| `behaviour` | Choice policy, perception noise, κ, ψ, rounds per level | softmax τ = 0.3, ε = 0.05; κ = 1, ψ = 0.5 |
+| `measures` | Level L\* for speed and cost | 7 |
+
+**Validation.** Every scenario is checked before it runs. A misspelled or unknown setting is an error, and so are a wrong type, an archetype used in the mix but not defined, and an unknown parameter of a plugin. So a typo can't silently do nothing.
+
+**Overrides** use nested YAML or dotted paths, for example `rules.alpha: 0.8` or `--set budget.allocation.rho=0`. When a component's `kind` changes, it is replaced whole, so parameters of the old kind don't leak into the new one.
+
+### Experiments
+
+An experiment is a YAML file in [experiments/](experiments/):
+
+```yaml
+id: my-experiment
+title: Does a strong screen help OSO?
+description: One paragraph, copied into the saved summary.
+seeds: 100                      # seeds per row; every row uses the same seeds (paired comparison)
+scenario: default               # base scenario: default, a name in scenarios/, or a path
+set:                            # overrides for every row
+  rules.visibility: { kind: choice }
+factors:                        # every combination of levels becomes one row; first factor outermost
+  - name: setting               # a factor of named levels, inline (set) or from presets.yaml (preset)
+    levels:
+      - { label: Traditional, preset: traditional }
+      - { label: OSO, preset: osoChoice }
+  - { name: θ, path: rules.screen, values: [0.5, 0.9] }   # a sweep of one setting
+patches:                        # overrides for rows whose settings match
+  - { when: { rules.alpha: 1 }, set: { rules.c: 0 } }
+exclude:                        # rows to leave out
+  - { rules.alpha: 1, rules.c: 0.15 }
+columns: [frontier, reachTarget, cost, sharing, gamerShare]   # see `npm run sim -- plugins`
+```
+
+An experiment may instead name an `analysis` that builds its own table, as `simple.yaml` does with `simple-chain-exact`. [presets.yaml](presets.yaml) holds the six rule settings by name.
+
+### Plugins
+
+Components chosen by `kind` are plugins. `npm run sim -- plugins` lists them with their parameters.
+
+| Registry | In a scenario | Built in |
+| --- | --- | --- |
+| `worlds` (world.ts) | `world.kind` | `layered` (random levels), `chain` (the simple model), `file` (any DAG from JSON) |
+| `visibilities` (rules.ts) | `rules.visibility.kind` | `finished-only`, `immediate`, `delayed` (`d`), `choice` |
+| `allocations` (rules.ts) | `budget.allocation.kind` | `earnings-share` (`rho`, `smoothing`), `equal` |
+| `policies` (rules.ts) | `behaviour.policy.kind` | `softmax` (`tau`, `epsilon`), `greedy` |
+| `COLUMNS` (measures.ts) | `columns:` | frontier, reach, speed, cost, spend, productivity, breadth, waste, credit, sharing, hoarded, reuse, duplicates, targets solved, gamer share, trivial spend |
+| `analyses` (experiment.ts) | `analysis:` | `simple-chain-exact` |
+
+**A world from a file** reads `{ "nodes": [{ "id", "prereqs"?, "p"?, "area"?, "bounty"? }] }`, with every result listed after the results it builds on. Levels are derived from the prerequisites. A result's `p` overrides the success model, and a `bounty` makes it a target. This is how the Lean problem set's reference DAG, with measured success chances, can become a simulated world.
+
+**Adding a plugin** means registering it once; it can then be used from any YAML file. For example, a visibility rule that publishes only every k-th round:
+
+```ts
+// in rules.ts, or any module imported by the simulator
+visibilities.register<{ every: number }>('batched', {
+  description: 'Results are published in batches every `every` rounds',
+  defaults: { every: 5 },
+  create: ({ every }) => ({
+    onProof: (ctx) => ctx.schedule(Math.ceil((ctx.round + 1) / every) * every),
+  }),
+});
+```
+
+```yaml
+rules: { visibility: { kind: batched, every: 10 } }
+```
+
+The other registries work the same way. For example, a new world generator returns a function `(success, rng) => World`, and `finishWorld` builds the World from levels, prerequisites, p and bounties. A new measure is an entry in `COLUMNS`.
+
+**Reproducibility.** A run depends only on its scenario and seed. Each component draws from its own random stream (world, agents, attribution noise, perception, the run itself), so changing one part of a setup does not reshuffle the others. The configuration refactor reproduced every saved result exactly: all 56 table rows of the five experiments.
 
 ## 4. Measures
 
@@ -297,7 +402,7 @@ The full grid over scoop risk ψ and cited share c is in [results/alpha-psi](res
 
 ## 6. What this simulation can and cannot show
 
-It is a thought experiment with the arithmetic done exactly. Where it departs from real research, starting with the largest gaps:
+It is a thought experiment with the arithmetic done exactly. The [specification, section 6](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md#6-instantiations) compares it element by element with the Lean experiment. Where it departs from real research, starting with the largest gaps:
 
 1. **Agents never invent problems.** Every possible result already exists, and agents see exactly which ones they can attempt. Real research is mostly finding the right question or lemma.
 2. **The benefit of sharing is largely built in.** A published result is instantly usable, always correct and free to understand. "Sharing does most of the work" largely restates that assumption.
@@ -316,14 +421,22 @@ What it is good for:
 
 | File | Contents |
 | --- | --- |
-| `rng.ts` | Seeded xoshiro128\*\* random numbers |
-| `world.ts` | World generation, waterfall shares, attribution value S |
-| `agents.ts` | Traits and archetypes |
-| `model.ts` | One run and its measures |
+| `scenarios/default.yaml` | Every setting with its default, documented |
+| `presets.yaml` | The six rule settings by name |
+| `experiments/*.yaml` | The experiments |
+| `config.ts` | Scenario types, loading, merging, dotted paths, validation |
+| `registry.ts` | Plugin registries |
+| `world.ts` | World generators (`layered`, `chain`, `file`), waterfall shares, attribution value S |
+| `agents.ts` | Agents from archetypes |
+| `rules.ts` | Visibility rules, compute allocation, choice policies |
+| `model.ts` | One run |
+| `measures.ts` | Measures of a run, and table columns |
+| `experiment.ts` | Expands experiments into rows, runs them; analyses |
 | `analytic.ts` | Exact predictions for the simple model |
-| `settings.ts` | Base parameters and named settings |
-| `experiments.ts` | Named experiments |
-| `cli.ts` | Runs experiments; `--save` logs results |
+| `cli.ts` | Command line; `--save` logs results |
+| `draw-world.ts` | Draws one world as an SVG |
+| `rng.ts` | Seeded xoshiro128\*\* random numbers |
+| `settings.ts`, `experiments.ts` | Compatibility shims for the old API; can be deleted |
 | `sim.test.ts` | Tests |
 | `results/` | Saved results: per experiment `summary.md`, `config.json` (every parameter, the commit), `runs.jsonl` (one line per run); `LOG.md` lists every saved run |
 
@@ -333,4 +446,5 @@ The tests (`npm test`) check:
 - that lemmas have no flow-back value under traditional rules;
 - reproducibility from a seed;
 - that payouts equal mints plus solved bounties;
-- both predictions of the model doc on fixed seeds.
+- both predictions of the model doc on fixed seeds;
+- the configuration layer: validation errors, component replacement, worlds from files, experiment expansion, and the delayed visibility rule.

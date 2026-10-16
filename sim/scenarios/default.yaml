@@ -1,0 +1,78 @@
+# The default scenario: every setting of the simulator, with its default value.
+# A scenario or experiment file overrides only what it changes; unknown keys are rejected.
+# Components chosen by `kind` (world, visibility, allocation, policy) are plugins; list them with
+# `npm run sim -- plugins`. The model is described in sim/README.md.
+
+world:
+  kind: layered          # a random DAG in levels (also: chain, file)
+  levels: 8
+  width: 10              # results per level
+  maxPrereqs: 3          # each result builds on 1 to maxPrereqs others
+  skipProb: 0.25         # chance an extra prerequisite comes from any lower level
+  areas: 3
+  areaStickiness: 0.8    # chance a result stays in its main prerequisite's area
+  targets:               # targets placed per level, among results with the most ancestors
+    - { level: 3, count: 2 }
+    - { level: 5, count: 2 }
+    - { level: 7, count: 2 }
+    - { level: 8, count: 1 }
+  bountyBase: 4          # bounty = bountyBase · bountyGrowth^(level − 1)
+  bountyGrowth: 2
+
+success:                 # success chance per attempt, before skill: p = p0 · eta^(level − 1)
+  p0: 0.5
+  eta: 0.6
+
+attribution:
+  noise: 0               # noise in the ledger's attribution weights (0 = exact, as in Lean)
+
+agents:
+  archetypes:            # traits of each archetype (see sim/README.md, section 2.2)
+    plain:      { skill: 1.0, conjecture: 1.0, cost: 1.0, horizon: 1.0,  risk: 0,    reuse: 1.0, sharing: 0,   gaming: 0,   specialist: false }
+    foundation: { skill: 1.0, conjecture: 0.7, cost: 1.0, horizon: 0.98, risk: 0.2,  reuse: 0.9, sharing: 0.5, gaming: 0,   specialist: false }
+    racer:      { skill: 1.0, conjecture: 0.5, cost: 1.0, horizon: 0.85, risk: -0.2, reuse: 0.6, sharing: 0,   gaming: 0,   specialist: false }
+    explorer:   { skill: 0.5, conjecture: 0.3, cost: 0.3, horizon: 0.95, risk: 0,    reuse: 0.8, sharing: 0.2, gaming: 0,   specialist: false }
+    specialist: { skill: 1.0, conjecture: 0.6, cost: 1.0, horizon: 0.95, risk: 0,    reuse: 0.8, sharing: 0.2, gaming: 0,   specialist: true }
+    freeRider:  { skill: 0.8, conjecture: 0.5, cost: 1.0, horizon: 0.9,  risk: 0,    reuse: 1.0, sharing: -1,  gaming: 0,   specialist: false }
+    gamer:      { skill: 0.8, conjecture: 0.3, cost: 0.5, horizon: 0.9,  risk: 0,    reuse: 0.8, sharing: 0,   gaming: 0.6, specialist: false }
+  mix:                   # how many agents of each archetype (order matters for reproducibility)
+    foundation: 3
+    racer: 3
+    explorer: 2
+    specialist: 2
+    freeRider: 1
+    gamer: 1
+  specialist:
+    boost: 1.6           # skill multiplier in the specialist's area
+    penalty: 0.4         # and elsewhere
+
+rules:                   # the only thing that differs between traditional research and OSO
+  alpha: 1               # share of incoming value a result keeps (traditional: 1)
+  c: 0                   # share of each mint paid to what it built on (traditional: 0)
+  mint: 1
+  screen: 0.5            # chance the validation screen rejects a trivial result (θ)
+  visibility:
+    kind: finished-only  # also: immediate, delayed (d), choice
+
+budget:
+  X: 1200                # total compute
+  rounds: 120
+  perAgentPerRound: null # if set, rounds = X / (number of agents × perAgentPerRound)
+  stopWhenSolved: true   # a funder stops paying once every target is solved
+  allocation:
+    kind: earnings-share # half equal, half by recent earnings when rho = 0.5
+    rho: 0.5
+    smoothing: 0.7
+
+behaviour:
+  policy:
+    kind: softmax        # choose by expected value, with some randomness
+    tau: 0.3             # temperature, relative to the best score
+    epsilon: 0.05        # chance of a uniformly random choice
+  perceptionNoise: 1     # σ0: scale of the noise in perceived values
+  kappa: 1               # publish rule: how much publishing raises a lemma's use
+  psi: 0.5               # publish rule: scoop risk
+  roundsPerLevel: 5      # expected rounds per level of depth, for discounting
+
+measures:
+  targetLevel: 7         # level L* for the speed and cost measures
