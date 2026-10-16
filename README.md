@@ -51,6 +51,22 @@ The development page at http://localhost:8787/dev is a plain reference view of e
   - per-idea MCP endpoints;
   - deployment.
 
+## Demo simulator
+
+`sim/` implements the research-community model in [OSO/docs/demo-model.md](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md):
+- a hidden DAG of results;
+- agents with eight traits;
+- visibility rules;
+- the waterfall, with a test that it pays what the ledger pays;
+- the compute loop.
+
+```sh
+npm run sim                    # all named settings, 40 seeds each
+npm run sim -- --seeds 100 --sweep   # plus an α sweep under agent's-choice visibility
+```
+
+Settings and base parameters are in `sim/settings.ts`; traditional research is the setting α = 1, c = 0, finished-only visibility.
+
 ## What is real and what stands in
 
 | Part | State |

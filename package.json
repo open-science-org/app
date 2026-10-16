@@ -14,7 +14,8 @@
     "test": "node --test",
     "import": "node scripts/import.ts",
     "types": "openapi-typescript contract/openapi.yaml -o contract/types.ts",
-    "check": "tsc -p ."
+    "check": "tsc -p .",
+    "sim": "node sim/cli.ts"
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
