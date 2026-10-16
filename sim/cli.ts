@@ -1,58 +1,79 @@
-// Runs the model over many seeds and prints the measures: `npm run sim -- [--seeds 40] [--sweep]`.
-import { run, type RunResult } from './model.ts';
-import { BASE, SETTINGS } from './settings.ts';
+// Runs named experiments: `npm run sim -- <experiment | all> [--seeds N] [--save]`.
+// With --save, results go to sim/results/<experiment>/ and a line is added to sim/results/LOG.md.
+import { execSync } from 'node:child_process';
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { EXPERIMENTS, type Experiment, type Output } from './experiments.ts';
 
 const args = process.argv.slice(2);
-const flag = (name: string, fallback: number) => {
+const flag = (name: string) => {
   const i = args.indexOf(`--${name}`);
-  return i >= 0 ? Number(args[i + 1]) : fallback;
+  return i >= 0 ? Number(args[i + 1]) : undefined;
 };
-const seeds = flag('seeds', 40);
-const firstSeed = flag('seed', 1);
+const name = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--seeds'));
+const save = args.includes('--save');
+const resultsDir = new URL('./results/', import.meta.url).pathname;
 
-function stats(xs: number[]) {
-  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
-  const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, xs.length - 1));
-  return { mean, sd };
+if (!name || (name !== 'all' && !EXPERIMENTS.some((e) => e.id === name))) {
+  console.log('Usage: npm run sim -- <experiment | all> [--seeds N] [--save]\n\nExperiments:');
+  for (const e of EXPERIMENTS) console.log(`  ${e.id.padEnd(12)} ${e.title} (default ${e.defaultSeeds} seeds)`);
+  process.exit(name ? 1 : 0);
 }
 
-function runMany(rules: (typeof SETTINGS)[string]['rules']): RunResult[] {
-  return Array.from({ length: seeds }, (_, k) => run({ ...BASE, rules, seed: firstSeed + k }));
-}
-
-const fmt = (x: number, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : '–');
-const ms = (xs: number[], d = 2) => {
-  const { mean, sd } = stats(xs);
-  return `${fmt(mean, d)} ±${fmt(sd, d)}`;
-};
-
-function row(label: string, rs: RunResult[]) {
-  const reached = rs.filter((r) => r.speed !== null);
-  return {
-    setting: label,
-    frontier: ms(rs.map((r) => r.frontier), 1),
-    [`reach L${BASE.targetLevel}`]: fmt(reached.length / rs.length),
-    speed: reached.length ? ms(reached.map((r) => r.speed!), 0) : '–',
-    cost: reached.length ? ms(reached.map((r) => r.cost!), 0) : '–',
-    productivity: ms(rs.map((r) => r.productivity * 100), 1),
-    breadth: ms(rs.map((r) => r.breadth)),
-    waste: ms(rs.map((r) => r.waste)),
-    credit: ms(rs.map((r) => r.creditAccuracy)),
-    sharing: ms(rs.map((r) => r.sharingRate)),
-    hoarded: ms(rs.map((r) => r.hoarded)),
-  };
-}
-
-console.log(`${seeds} seeds per setting; budget X = ${BASE.X} over ${BASE.T} rounds; productivity is results per 100 units of spend.\n`);
-console.table(Object.values(SETTINGS).map((s) => row(s.label, runMany(s.rules))));
-
-if (args.includes('--sweep')) {
-  console.log('\nα sweep with visibility = agent\'s choice (c = 0.15; α = 1 uses c = 0):');
-  const sweep = [];
-  for (let a = 1; a >= 0.099; a -= 0.1) {
-    const alpha = Math.round(a * 100) / 100;
-    const rs = runMany({ alpha, c: alpha === 1 ? 0 : 0.15, visibility: { kind: 'choice' } });
-    sweep.push({ alpha, ...row(`α = ${alpha}`, rs) });
+function git() {
+  try {
+    const commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+    const dirty = execSync('git status --porcelain -- sim ledger', { encoding: 'utf8' })
+      .split('\n').filter((l) => l && !l.includes('sim/results/')).length > 0;
+    return { commit, dirty };
+  } catch {
+    return { commit: 'unknown', dirty: true };
   }
-  console.table(sweep.map(({ alpha: _a, ...r }) => r));
 }
+
+function markdownTable(rows: Output['table']): string {
+  const cols = Object.keys(rows[0] ?? {});
+  const line = (cells: unknown[]) => `| ${cells.map((c) => String(c).replace(/\|/g, '\\|')).join(' | ')} |`;
+  return [line(cols), line(cols.map(() => '---')), ...rows.map((r) => line(cols.map((c) => r[c])))].join('\n');
+}
+
+function runOne(e: Experiment) {
+  const seeds = flag('seeds') ?? e.defaultSeeds;
+  const started = Date.now();
+  const out = e.run(seeds);
+  const seconds = (Date.now() - started) / 1000;
+  console.log(`\n${e.title} (${seeds} seeds, ${seconds.toFixed(1)}s)\n${e.description}\n`);
+  console.table(out.table);
+  if (!save) return;
+
+  const { commit, dirty } = git();
+  const date = new Date().toISOString().slice(0, 10);
+  const command = `npm run sim -- ${e.id} --seeds ${seeds} --save`;
+  const dir = join(resultsDir, e.id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({ experiment: e.id, date, commit, dirty, command, seeds, config: out.config }, null, 2) + '\n');
+  writeFileSync(join(dir, 'runs.jsonl'), out.runs.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  writeFileSync(join(dir, 'summary.md'), [
+    `# ${e.title}`,
+    '',
+    e.description,
+    '',
+    `- **Date:** ${date}`,
+    `- **Code:** commit \`${commit}\`${dirty ? ' (with uncommitted changes to the simulator)' : ''}`,
+    `- **Command:** \`${command}\``,
+    `- **Runs:** ${out.runs.length} (${seeds} seeds per row), in \`runs.jsonl\`; all parameters in \`config.json\``,
+    '',
+    'Values are mean ± standard deviation over seeds, except in the simple model, where they are mean ± standard error so they can be compared with the exact values.',
+    '',
+    markdownTable(out.table),
+    '',
+  ].join('\n'));
+  const log = join(resultsDir, 'LOG.md');
+  if (!existsSync(log)) {
+    writeFileSync(log, '# Simulation log\n\nOne line per saved experiment, newest last. Findings are discussed in [../README.md](../README.md#results).\n\n| Date | Experiment | Commit | Seeds | Command |\n| --- | --- | --- | --- | --- |\n');
+  }
+  appendFileSync(log, `| ${date} | [${e.id}](${e.id}/summary.md) | \`${commit}\`${dirty ? ' (uncommitted changes)' : ''} | ${seeds} | \`${command}\` |\n`);
+  console.log(`Saved to sim/results/${e.id}/ (commit ${commit}${dirty ? ', uncommitted changes' : ''}).`);
+}
+
+for (const e of EXPERIMENTS) if (name === 'all' || e.id === name) runOne(e);

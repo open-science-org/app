@@ -55,6 +55,8 @@ export interface RunResult {
   curve: { round: number; spend: number; level: number }[];
   spend: number;
   frontier: number;
+  /** Deepest level proved by anyone, published or not. */
+  deepestProved: number;
   speed: number | null;
   cost: number | null;
   productivity: number;
@@ -362,6 +364,7 @@ function measure(s: State, curve: RunResult['curve'], speed: number | null, cost
     curve,
     spend: s.spend,
     frontier: curve.at(-1)?.level ?? 0,
+    deepestProved: Math.max(0, ...[...Array(world.n).keys()].filter((r) => s.firstProof[r] >= 0).map((r) => world.level[r])),
     speed,
     cost,
     productivity: published.length / spend,

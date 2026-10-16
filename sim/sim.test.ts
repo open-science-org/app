@@ -96,3 +96,18 @@ test('prediction 2: with enough flow-back, agents choose to share', () => {
   const sharing = (alpha: number) => runs(alpha).reduce((a, r) => a + r.sharingRate, 0) / 12;
   assert.ok(sharing(0.3) > sharing(1) + 0.3);
 });
+
+test('the simple model matches its exact predictions', async () => {
+  const { hiddenDepth, sharedDepth } = await import('./analytic.ts');
+  const X = 320;
+  const p = 0.2;
+  const world = { ...BASE.world, levels: 200, width: 1, maxPrereqs: 1, areas: 1, p0: p, eta: 1, targets: [{ level: 200, count: 1 }] };
+  for (const [N, kind] of [[4, 'immediate'], [4, 'finished-only']] as const) {
+    const depths = Array.from({ length: 300 }, (_, k) =>
+      run({ ...BASE, world, mix: { plain: N }, X, T: X / N, rho: 0, rules: { alpha: 1, c: 0, visibility: { kind } }, seed: 300 + k }).deepestProved);
+    const m = depths.reduce((a, b) => a + b, 0) / depths.length;
+    const exact = kind === 'immediate' ? sharedDepth(X, p) : hiddenDepth(X, p, N);
+    const se = exact.sd / Math.sqrt(depths.length);
+    assert.ok(Math.abs(m - exact.mean) < 4 * se, `${kind}: simulated ${m}, exact ${exact.mean} ± ${se}`);
+  }
+});

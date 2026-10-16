@@ -22,9 +22,11 @@ export interface Traits {
   gaming: number;
 }
 
-export type Archetype = 'foundation' | 'racer' | 'explorer' | 'specialist' | 'freeRider' | 'gamer';
+export type Archetype = 'plain' | 'foundation' | 'racer' | 'explorer' | 'specialist' | 'freeRider' | 'gamer';
 
 export const ARCHETYPES: Record<Archetype, Omit<Traits, 'specialty'> & { specialist?: boolean }> = {
+  // The simple model's agent: average skill, unit cost, no preferences, takes up others' work at once.
+  plain: { skill: 1.0, conjecture: 1.0, cost: 1.0, horizon: 1.0, risk: 0, reuse: 1.0, sharing: 0, gaming: 0 },
   foundation: { skill: 1.0, conjecture: 0.7, cost: 1.0, horizon: 0.98, risk: 0.2, reuse: 0.9, sharing: 0.5, gaming: 0 },
   racer: { skill: 1.0, conjecture: 0.5, cost: 1.0, horizon: 0.85, risk: -0.2, reuse: 0.6, sharing: 0, gaming: 0 },
   explorer: { skill: 0.5, conjecture: 0.3, cost: 0.3, horizon: 0.95, risk: 0, reuse: 0.8, sharing: 0.2, gaming: 0 },
@@ -36,7 +38,7 @@ export const ARCHETYPES: Record<Archetype, Omit<Traits, 'specialty'> & { special
 export const SPECIALIST_BOOST = 1.6;
 export const SPECIALIST_PENALTY = 0.4;
 
-export const DEFAULT_MIX: Record<Archetype, number> = {
+export const DEFAULT_MIX: Partial<Record<Archetype, number>> = {
   foundation: 3, racer: 3, explorer: 2, specialist: 2, freeRider: 1, gamer: 1,
 };
 
