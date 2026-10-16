@@ -116,6 +116,7 @@ const settings: Experiment = {
         setting: s.label,
         ...measures(rs, BASE.targetLevel),
         'gamer share of pay': f(mean(shares.gamer ?? [0])),
+        'trivial spend': msd(rs.map((r) => r.wasteParts.trivial)),
       });
     }
     return { config: { base: BASE, settings: SETTINGS, seeds }, table, runs };
@@ -158,4 +159,39 @@ const alphaPsi = sweep(
   })))),
 );
 
-export const EXPERIMENTS: Experiment[] = [simple, settings, alphaSweep, alphaPsi];
+const { gamer: _gamer, ...noGamer } = BASE.mix;
+const variants: { variant: string; over: Partial<RunParams> }[] = [
+  { variant: 'default (ρ = 0.5, θ = 0.5)', over: {} },
+  { variant: 'no compute loop (ρ = 0)', over: { rho: 0 } },
+  { variant: 'strong screen (θ = 0.9)', over: { theta: 0.9 } },
+  { variant: 'no gamer', over: { mix: noGamer } },
+];
+
+const sensitivity: Experiment = {
+  id: 'sensitivity',
+  title: 'How much the traditional-vs-OSO gap depends on the gamer and the compute loop',
+  description:
+    'Traditional and OSO (immediate) under four variants. Under traditional rules only target winners and spammers earn early, so the compute loop can hand the gaming agent most of the budget.',
+  defaultSeeds: 100,
+  run(seeds) {
+    const table: Output['table'] = [];
+    const runs: Output['runs'] = [];
+    for (const v of variants) {
+      for (const key of ['traditional', 'oso']) {
+        const rs = runSeeds({ ...BASE, ...v.over, rules: SETTINGS[key].rules }, seeds);
+        rs.forEach((r, k) => runs.push(record(r, { variant: v.variant, setting: key, seed: k + 1 })));
+        const gamer = rs.map((r) => r.earningsByArchetype.gamer).filter((x) => x !== undefined);
+        table.push({
+          variant: v.variant,
+          setting: SETTINGS[key].label,
+          ...measures(rs, BASE.targetLevel),
+          'gamer share of pay': gamer.length ? f(mean(gamer)) : '–',
+          'trivial spend': msd(rs.map((r) => r.wasteParts.trivial)),
+        });
+      }
+    }
+    return { config: { base: BASE, variants, seeds }, table, runs };
+  },
+};
+
+export const EXPERIMENTS: Experiment[] = [simple, settings, alphaSweep, alphaPsi, sensitivity];
