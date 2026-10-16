@@ -1,18 +1,47 @@
-// Seeded random numbers, so every run can be reproduced exactly.
+// Seeded random numbers, so every run can be reproduced exactly: xoshiro128** seeded by splitmix32.
+
+function splitmix32(x: number): () => number {
+  return () => {
+    x = (x + 0x9e3779b9) >>> 0;
+    let z = x;
+    z = Math.imul(z ^ (z >>> 16), 0x85ebca6b) >>> 0;
+    z = Math.imul(z ^ (z >>> 13), 0xc2b2ae35) >>> 0;
+    return (z ^ (z >>> 16)) >>> 0;
+  };
+}
 
 export class Rng {
-  private s: number;
+  private a: number;
+  private b: number;
+  private c: number;
+  private d: number;
 
   constructor(seed: number) {
-    this.s = seed >>> 0 || 0x9e3779b9;
+    const sm = splitmix32(seed >>> 0);
+    this.a = sm();
+    this.b = sm();
+    this.c = sm();
+    this.d = sm();
+    if ((this.a | this.b | this.c | this.d) === 0) this.a = 1;
   }
 
-  /** Uniform in [0, 1) (mulberry32). */
+  private u32(): number {
+    const result = Math.imul(((Math.imul(this.b, 5) << 7) | (Math.imul(this.b, 5) >>> 25)), 9) >>> 0;
+    const t = (this.b << 9) >>> 0;
+    this.c ^= this.a;
+    this.d ^= this.b;
+    this.b ^= this.c;
+    this.a ^= this.d;
+    this.c = (this.c ^ t) >>> 0;
+    this.d = ((this.d << 11) | (this.d >>> 21)) >>> 0;
+    this.a >>>= 0;
+    this.b >>>= 0;
+    return result;
+  }
+
+  /** Uniform in [0, 1), with 32 random bits. */
   next(): number {
-    let t = (this.s = (this.s + 0x6d2b79f5) >>> 0);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return this.u32() / 4294967296;
   }
 
   int(n: number): number {
@@ -41,8 +70,8 @@ export class Rng {
     return xs;
   }
 
-  /** A new generator whose stream depends on this seed and a label, for independent sub-streams. */
+  /** An independent generator for a labelled sub-stream (world, agents, perception, run). */
   fork(label: number): Rng {
-    return new Rng((this.next() * 4294967296) ^ Math.imul(label + 1, 0x85ebca6b));
+    return new Rng((this.u32() ^ Math.imul(label + 1, 0x27d4eb2d)) >>> 0);
   }
 }
