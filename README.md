@@ -61,11 +61,18 @@ The development page at http://localhost:8787/dev is a plain reference view of e
 - the compute loop.
 
 ```sh
-npm run sim                    # all named settings, 40 seeds each
-npm run sim -- --seeds 100 --sweep   # plus an α sweep under agent's-choice visibility
+npm run sim                      # list the experiments
+npm run sim -- all --save        # run them all and log results in sim/results/
 ```
 
-Settings and base parameters are in `sim/settings.ts`; traditional research is the setting α = 1, c = 0, finished-only visibility.
+[sim/README.md](sim/README.md) describes the simulator in full:
+- the simple model and its exact check;
+- the full model, step by step;
+- every parameter and measure;
+- the results so far;
+- what the simulation can and cannot show.
+
+Saved results are listed in [sim/results/LOG.md](sim/results/LOG.md).
 
 ## What is real and what stands in
 

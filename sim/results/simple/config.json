@@ -1,0 +1,22 @@
+{
+  "experiment": "simple",
+  "date": "2026-10-16",
+  "commit": "6501aec",
+  "dirty": false,
+  "command": "npm run sim -- simple --seeds 1000 --save",
+  "seeds": 1000,
+  "config": {
+    "X": 640,
+    "p": 0.2,
+    "chainLength": 300,
+    "agents": "plain",
+    "N": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "seeds": 1000
+  }
+}

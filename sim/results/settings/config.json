@@ -1,0 +1,127 @@
+{
+  "experiment": "settings",
+  "date": "2026-10-16",
+  "commit": "6501aec",
+  "dirty": false,
+  "command": "npm run sim -- settings --seeds 100 --save",
+  "seeds": 100,
+  "config": {
+    "base": {
+      "world": {
+        "levels": 8,
+        "width": 10,
+        "maxPrereqs": 3,
+        "skipProb": 0.25,
+        "areas": 3,
+        "areaStickiness": 0.8,
+        "p0": 0.5,
+        "eta": 0.6,
+        "targets": [
+          {
+            "level": 3,
+            "count": 2
+          },
+          {
+            "level": 5,
+            "count": 2
+          },
+          {
+            "level": 7,
+            "count": 2
+          },
+          {
+            "level": 8,
+            "count": 1
+          }
+        ],
+        "B0": 4,
+        "g": 2
+      },
+      "mix": {
+        "foundation": 3,
+        "racer": 3,
+        "explorer": 2,
+        "specialist": 2,
+        "freeRider": 1,
+        "gamer": 1
+      },
+      "X": 1200,
+      "T": 120,
+      "m": 1,
+      "theta": 0.5,
+      "rho": 0.5,
+      "lambdaE": 0.7,
+      "sigmaW": 0,
+      "tau": 0.3,
+      "epsilon": 0.05,
+      "sigma0": 1,
+      "kappa": 1,
+      "psi": 0.5,
+      "roundsPerLevel": 5,
+      "targetLevel": 7
+    },
+    "settings": {
+      "traditional": {
+        "label": "Traditional",
+        "rules": {
+          "alpha": 1,
+          "c": 0,
+          "visibility": {
+            "kind": "finished-only"
+          }
+        }
+      },
+      "oso": {
+        "label": "OSO (immediate)",
+        "rules": {
+          "alpha": 0.8,
+          "c": 0.15,
+          "visibility": {
+            "kind": "immediate"
+          }
+        }
+      },
+      "creditOnly": {
+        "label": "Flow-back, finished-only",
+        "rules": {
+          "alpha": 0.8,
+          "c": 0.15,
+          "visibility": {
+            "kind": "finished-only"
+          }
+        }
+      },
+      "sharingOnly": {
+        "label": "No flow-back, immediate",
+        "rules": {
+          "alpha": 1,
+          "c": 0,
+          "visibility": {
+            "kind": "immediate"
+          }
+        }
+      },
+      "traditionalChoice": {
+        "label": "No flow-back, choice",
+        "rules": {
+          "alpha": 1,
+          "c": 0,
+          "visibility": {
+            "kind": "choice"
+          }
+        }
+      },
+      "osoChoice": {
+        "label": "OSO (choice)",
+        "rules": {
+          "alpha": 0.8,
+          "c": 0.15,
+          "visibility": {
+            "kind": "choice"
+          }
+        }
+      }
+    },
+    "seeds": 100
+  }
+}
