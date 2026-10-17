@@ -120,7 +120,7 @@ test('prediction 2: with enough flow-back, agents choose to share', () => {
 test('misspelled settings and unknown plugin parameters are rejected', () => {
   assert.throws(() => loadScenario(null, { 'rules.alhpa': 0.5 }), /unknown setting "rules.alhpa"/);
   assert.throws(() => loadScenario(null, { 'rules.alpha': 'high' }), /rules.alpha must be a number/);
-  assert.throws(() => loadScenario(null, { 'agents.mix.wizard': 2 }), /not in agents.archetypes/);
+  assert.throws(() => loadScenario(null, { 'agents.mix.wizard': 2 }), /not defined in agents.archetypes/);
   assert.throws(() => run(loadScenario(null, { 'rules.visibility': { kind: 'delayed', dd: 2 } }), 1), /has no parameter "dd"/);
   assert.throws(() => run(loadScenario(null, { 'rules.visibility': { kind: 'telepathy' } }), 1), /unknown visibility "telepathy"/);
 });
@@ -162,4 +162,30 @@ test('experiments expand factors, presets, patches and exclusions into rows', ()
 test('delayed visibility publishes lemmas the stated number of rounds later', () => {
   const r = run(loadScenario(null, { 'rules.visibility': { kind: 'delayed', d: 3 } }), 4);
   assert.ok(r.publicationLag >= 3, `lag ${r.publicationLag}`);
+});
+
+test('a learning oracle, where failures raise the next chance, reaches deeper than pure chance', () => {
+  const chain = (oracle: Record<string, unknown>) => loadScenario(null, {
+    world: { kind: 'chain', length: 200 },
+    success: { p0: 0.1, eta: 1, oracle },
+    budget: { X: 200, perAgentPerRound: 1, allocation: { kind: 'equal' } },
+    'agents.mix': { foundation: 0, racer: 0, explorer: 0, specialist: 0, freeRider: 0, gamer: 0, plain: 1 },
+    'rules.visibility': { kind: 'immediate' },
+  });
+  const depth = (sc: Scenario) => mean(Array.from({ length: 200 }, (_, k) => run(sc, 500 + k).deepestProved));
+  const chance = depth(chain({ kind: 'chance' }));
+  const learning = depth(chain({ kind: 'learning', gain: 0.5 }));
+  assert.ok(Math.abs(chance - 20) < 1.5, `chance oracle: ${chance}, expected about X·p = 20`);
+  assert.ok(learning > chance + 5, `learning ${learning} vs chance ${chance}`);
+});
+
+test('deciders can differ by archetype, and a zero-intelligence decider runs', () => {
+  const sc = loadScenario(null, { 'agents.deciders': { gamer: { kind: 'random' }, racer: { kind: 'random', publish: 0 } } });
+  const r = run(sc, 3);
+  assert.ok(r.published > 0);
+  // A random gamer never games, so nothing trivial is farmed.
+  assert.equal(r.trivialPublished, 0);
+  const all = run(loadScenario(null, { 'behaviour.decider': { kind: 'random' }, 'rules.visibility': { kind: 'immediate' } }), 3);
+  assert.ok(all.frontier >= 1);
+  assert.throws(() => run(loadScenario(null, { 'agents.deciders': { gamer: { kind: 'oracle-reader' } } }), 1), /unknown decider/);
 });

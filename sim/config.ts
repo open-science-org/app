@@ -31,14 +31,19 @@ export type Component = { kind: string } & Record<string, unknown>;
 export interface Scenario {
   /** The hidden DAG of results (registry: worlds). */
   world: Component;
-  /** Success chance per attempt by level, p = p0 · eta^(level − 1), unless the world gives p per result. */
-  success: { p0: number; eta: number };
+  /**
+   * Success chance per attempt by level, p = p0 · eta^(level − 1), unless the world gives p per result;
+   * and the success oracle that decides each attempt (registry: oracles).
+   */
+  success: { p0: number; eta: number; oracle: Component };
   /** Noise in the ledger's attribution weights (0 = exact, as in Lean). */
   attribution: { noise: number };
   agents: {
     archetypes: Record<string, Traits>;
     mix: Record<string, number>;
     specialist: { boost: number; penalty: number };
+    /** Deciders for particular archetypes, overriding behaviour.decider (registry: deciders). */
+    deciders: Record<string, Component>;
   };
   rules: {
     /** Share of incoming value a result keeps; the rest flows to what it built on. */
@@ -64,7 +69,9 @@ export interface Scenario {
     allocation: Component;
   };
   behaviour: {
-    /** How an agent chooses what to attempt (registry: policies). */
+    /** How agents decide what to attempt and whether to publish (registry: deciders). */
+    decider: Component;
+    /** For the formula decider: how it chooses among scored options (registry: policies). */
     policy: Component;
     /** Scale of the noise in agents' perception of value. */
     perceptionNoise: number;
@@ -135,6 +142,13 @@ export function validate(scenario: unknown, shape: unknown, where = 'scenario'):
       for (const [name, traits] of Object.entries(value)) walk(traits, traitShape, `${path}.${name}`);
       return;
     }
+    if (path === 'agents.deciders') {
+      if (!isObject(value)) throw new Error(`${where}: ${path} must be an object`);
+      for (const [name, d] of Object.entries(value)) {
+        if (!isObject(d) || typeof d.kind !== 'string') throw new Error(`${where}: ${path}.${name} must be an object with a "kind"`);
+      }
+      return;
+    }
     if (path === 'agents.mix') {
       if (!isObject(value)) throw new Error(`${where}: ${path} must be an object`);
       for (const [name, n] of Object.entries(value)) {
@@ -170,8 +184,8 @@ export function loadScenario(file: string | null = null, ...patches: Record<stri
   if (file && file !== 'default') s = merge(s, readConfigFile(file.includes('/') || file.includes('.') ? file : `scenarios/${file}.yaml`));
   for (const p of patches) s = merge(s, expandPaths(p));
   validate(s, defaultScenario());
-  for (const name of Object.keys(s.agents.mix)) {
-    if (!(name in s.agents.archetypes)) throw new Error(`scenario: agents.mix uses "${name}", which is not in agents.archetypes`);
+  for (const name of [...Object.keys(s.agents.mix), ...Object.keys(s.agents.deciders)]) {
+    if (!(name in s.agents.archetypes)) throw new Error(`scenario: "${name}" is used in agents but not defined in agents.archetypes`);
   }
   return s;
 }

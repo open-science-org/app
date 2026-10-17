@@ -46,14 +46,14 @@ Where each element of the [specification](https://github.com/open-science-org/OS
 | Specification | Configuration (scenario) | Code |
 | --- | --- | --- |
 | Research tree, targets, bounties (2.1) | `world` (plugin: `layered`, `chain`, `file`) | `world.ts` |
-| Success oracle and chance p (2.2) | `success` (p0, eta), agent `skill`, specialist boost | `model.ts`, `attempt`: succeeds if a random number is below p |
+| Success oracle and chance p (2.2) | `success.oracle` (plugin: `chance`, `learning`); p from `success` (p0, eta), agent `skill`, specialist boost | `oracles.ts`; `model.ts`, `attempt` |
 | Knowledge, publishing, uptake (2.3) | `rules.visibility` (plugin), agent `reuse` | `rules.ts` (`visibilities`), `model.ts` (`publishBundle`, uptake loop) |
 | Rewards: mint, bounty, waterfall, screen (2.4) | `rules.alpha`, `rules.c`, `rules.mint`, `rules.screen`, `attribution.noise` | `world.ts` (`shares`, `attributionValue`), `model.ts` (`publishOne`, `payInto`) |
 | Budget, rounds, allocation (2.5) | `budget` (allocation plugin) | `rules.ts` (`allocations`), `model.ts` (`run`) |
 | One round (2.6) | — | `model.ts`, `run` |
 | The rules and settings (3) | `rules`; named settings in `presets.yaml` | `presets.yaml` |
 | Traits and archetypes (4.1) | `agents.archetypes`, `agents.mix` | `agents.ts` |
-| How simulated agents decide (4.2) | `behaviour` (policy plugin, perception noise, κ, ψ, rounds per level) | `model.ts` (`score`, `wouldPublish`), `rules.ts` (`policies`) |
+| How agents decide (4.2) | `behaviour.decider` (plugin: `formula`, `random`), per archetype in `agents.deciders`; the formula decider's settings in `behaviour` | `deciders.ts`; `rules.ts` (`policies`) |
 | Measures (5) | `measures.targetLevel`; columns in experiments | `measures.ts` |
 | Experiments and factors (7) | `experiments/*.yaml` | `experiment.ts`, `cli.ts` |
 
@@ -212,6 +212,9 @@ A test checks that this pays each result exactly what the ledger's integer OIP-1
 
 ### 2.5 Decisions
 
+The default `formula` decider ([deciders.ts](deciders.ts)). Deciders are plugins: an archetype can use another one (`agents.deciders`), such as `random`, a zero-intelligence baseline.
+
+
 **What to attempt.** The value of result r to agent i is:
 
 ```
@@ -299,7 +302,9 @@ Components chosen by `kind` are plugins. `npm run sim -- plugins` lists them wit
 | `worlds` (world.ts) | `world.kind` | `layered` (random levels), `chain` (the simple model), `file` (any DAG from JSON) |
 | `visibilities` (rules.ts) | `rules.visibility.kind` | `finished-only`, `immediate`, `delayed` (`d`), `choice` |
 | `allocations` (rules.ts) | `budget.allocation.kind` | `earnings-share` (`rho`, `smoothing`), `equal` |
-| `policies` (rules.ts) | `behaviour.policy.kind` | `softmax` (`tau`, `epsilon`), `greedy` |
+| `oracles` (oracles.ts) | `success.oracle.kind` | `chance` (succeeds with chance p), `learning` (`gain`, `cap`: each failure raises the next chance) |
+| `deciders` (deciders.ts) | `behaviour.decider.kind`, `agents.deciders.<archetype>.kind` | `formula` (section 2.5), `random` (`publish`) |
+| `policies` (rules.ts) | `behaviour.policy.kind` (formula decider) | `softmax` (`tau`, `epsilon`), `greedy` |
 | `COLUMNS` (measures.ts) | `columns:` | frontier, reach, speed, cost, spend, productivity, breadth, waste, credit, sharing, hoarded, reuse, duplicates, targets solved, gamer share, trivial spend |
 | `analyses` (experiment.ts) | `analysis:` | `simple-chain-exact` |
 
@@ -322,9 +327,15 @@ visibilities.register<{ every: number }>('batched', {
 rules: { visibility: { kind: batched, every: 10 } }
 ```
 
-The other registries work the same way. For example, a new world generator returns a function `(success, rng) => World`, and `finishWorld` builds the World from levels, prerequisites, p and bounties. A new measure is an entry in `COLUMNS`.
+The other registries work the same way:
+- **A world generator** returns a function `(success, rng) => World`; `finishWorld` builds the World from levels, prerequisites, p and bounties.
+- **A success oracle** returns `{ succeeds(ctx) }`. The context includes the agent, the result, the environment's chance p, the agent's past failures on that result, the random stream, and the decider's `payload`. An oracle that runs Lean's checker on a written proof would be one more plugin.
+- **A decider** returns `{ choose(agent, frontier), wouldPublish(agent, result, choice) }`. It must use only what its agent knows (specification, section 2.3) and draw randomness only from the run's stream. An LLM decider, which prompts a model and attaches its proof as the payload, would be one more plugin.
+- **A measure** is an entry in `COLUMNS`.
 
-**Reproducibility.** A run depends only on its scenario and seed. Each component draws from its own random stream (world, agents, attribution noise, perception, the run itself), so changing one part of a setup does not reshuffle the others. The configuration refactor reproduced every saved result exactly: all 56 table rows of the five experiments.
+The core loop (`model.ts`) is only the environment: frontier, success, publishing, payment and compute. Every decision and every source of success is a plugin. Today the loop is synchronous; LLM deciders and a Lean oracle will need an asynchronous version of it, which is the next change for the Lean harness.
+
+**Reproducibility.** A run depends only on its scenario and seed. Each component draws from its own random stream (world, agents, attribution noise, perception, the run itself), so changing one part of a setup does not reshuffle the others. Both refactors (to configuration, then to oracle and decider plugins) reproduced every saved result exactly: all 56 table rows of the five experiments.
 
 ## 4. Measures
 
@@ -428,8 +439,10 @@ What it is good for:
 | `registry.ts` | Plugin registries |
 | `world.ts` | World generators (`layered`, `chain`, `file`), waterfall shares, attribution value S |
 | `agents.ts` | Agents from archetypes |
+| `oracles.ts` | Success oracles |
+| `deciders.ts` | Deciders: the formula agent and the random baseline |
 | `rules.ts` | Visibility rules, compute allocation, choice policies |
-| `model.ts` | One run |
+| `model.ts` | One run: the environment only |
 | `measures.ts` | Measures of a run, and table columns |
 | `experiment.ts` | Expands experiments into rows, runs them; analyses |
 | `analytic.ts` | Exact predictions for the simple model |
@@ -447,4 +460,5 @@ The tests (`npm test`) check:
 - reproducibility from a seed;
 - that payouts equal mints plus solved bounties;
 - both predictions of the model doc on fixed seeds;
-- the configuration layer: validation errors, component replacement, worlds from files, experiment expansion, and the delayed visibility rule.
+- the configuration layer: validation errors, component replacement, worlds from files, experiment expansion, and the delayed visibility rule;
+- the plugins: a learning oracle reaches deeper than chance, and deciders can differ by archetype.

@@ -1,11 +1,14 @@
-// One run of the research-community model (sim/README.md, section 2). Everything comes from the
-// scenario; worlds, visibility, allocation and policy are plugins.
+// One run (specification, section 2.6). This module is the environment only: frontier, success,
+// publishing, payment and compute. Everything else comes from the scenario through plugins: the
+// world, the success oracle, each agent's decider, visibility, allocation and measures.
 import { makeAgents, skillIn, type Agent } from './agents.ts';
 import type { Scenario } from './config.ts';
+import { deciders, type Choice, type Decider } from './deciders.ts';
 import { measure, type RunResult } from './measures.ts';
+import { oracles, type Oracle } from './oracles.ts';
 import { Rng } from './rng.ts';
-import { allocations, policies, visibilities, type Visibility } from './rules.ts';
-import { attributionValue, ledgerWeights, shares, worlds, type World } from './world.ts';
+import { allocations, visibilities, type Visibility } from './rules.ts';
+import { ledgerWeights, shares, worlds, type World } from './world.ts';
 
 export type { RunResult } from './measures.ts';
 
@@ -16,11 +19,9 @@ export interface State {
   agents: Agent[];
   rng: Rng;
   visibility: Visibility;
+  oracle: Oracle;
   share: Float64Array[];
   w: number[][];
-  /** Each agent's noisy perception of attribution value S and of the best bounty below each result. */
-  seenS: Float64Array[];
-  seenDown: Float64Array[];
   known: Set<number>[];
   proved: Set<number>[];
   author: Int32Array;
@@ -34,6 +35,10 @@ export interface State {
   spendOn: Map<number, number>;
   spendTrivial: number;
   spend: number;
+  /** How many agents can attempt each result this round (all agents know this; used to estimate the race). */
+  rivalsAt: Int32Array;
+  /** Failed attempts by agent and result (key: agent × n + result), for oracles that learn. */
+  failures: Map<number, number>;
   duplicates: number;
   trivialPublished: number;
   round: number;
@@ -82,66 +87,32 @@ export function frontierOf(s: State, i: number): number[] {
   return out;
 }
 
-/** Expected delay, in rounds, until value from targets below r arrives. */
-function delay(s: State, r: number): number {
-  const below = s.world.targetsBelow[r];
-  if (!below.length) return 1;
-  const mean = below.reduce((a, t) => a + s.world.level[t], 0) / below.length;
-  return Math.max(1, s.sc.behaviour.roundsPerLevel * (mean - s.world.level[r]));
-}
-
-/** The score U_i(r) of attempting r (sim/README.md, section 2.5), and its parts. */
-function score(s: State, i: number, r: number, rivals: number) {
+/** One attempt by agent i: its decider chooses, the oracle decides, the visibility rule publishes. */
+function attempt(s: State, i: number, decider: Decider) {
   const { world } = s;
-  const { alpha, c, mint: m } = s.sc.rules;
-  const t = s.agents[i].traits;
-  const pi = Math.min(1, skillIn(s.agents[i], world.area[r], s.sc.agents.specialist) * world.p[r]);
-  const win = 1 / (1 + rivals);
-  const later = t.horizon ** delay(s, r);
-  const mint = world.prereqs[r].length ? (1 - c) * m : m;
-  const bounty = world.isTarget[r] ? alpha * world.bounty[r] * win : 0;
-  // A lemma is a stepping stone to a target the agent may win itself, under any rules.
-  const step = later * alpha * s.seenDown[i][r] * win;
-  const flow = later * s.seenS[i][r];
-  const value = mint + bounty + step + flow;
-  return { pi, value, u: value * (pi - t.risk * Math.sqrt(pi * (1 - pi))), win, later };
-}
-
-function wouldPublish(s: State, i: number, r: number, win: number, later: number): boolean {
-  const { world } = s;
-  const { alpha, c, mint: m } = s.sc.rules;
-  const { kappa, psi } = s.sc.behaviour;
-  const t = s.agents[i].traits;
-  // Kept private, the mint arrives only if the agent later wins a target that uses r.
-  const mint = (world.prereqs[r].length ? 1 - c : 1) * m;
-  const mintAtRisk = mint * (1 - (world.targetsBelow[r].length ? later * win : 0));
-  const gain = t.sharing * m + mintAtRisk + later * s.seenS[i][r] * kappa;
-  const scoop = alpha * s.seenDown[i][r] * win * psi;
-  return gain >= scoop;
-}
-
-function attempt(s: State, i: number, rivalsAt: Int32Array, choose: (scores: number[]) => number) {
-  const { world, rng } = s;
   const agent = s.agents[i];
   const k = agent.traits.cost;
-  if (rng.chance(agent.traits.gaming)) {
+  const choice: Choice = decider.choose(i, frontierOf(s, i));
+  if (choice.kind === 'idle') return;
+  if (choice.kind === 'trivial') {
     s.spend += k;
     s.spendTrivial += k;
-    if (!rng.chance(s.sc.rules.screen)) {
+    if (!s.rng.chance(s.sc.rules.screen)) {
       s.roundEarnings[i] += s.sc.rules.mint;
       s.trivialPublished++;
     }
     return;
   }
-  const options = frontierOf(s, i);
-  if (!options.length) return;
-  const scored = options.map((x) => score(s, i, x, Math.max(0, rivalsAt[x] - 1)));
-  const idx = choose(scored.map((o) => o.u));
-  const r = options[idx];
-  const sc = scored[idx];
+  const r = choice.result;
+  const key = i * world.n + r;
   s.spend += k;
-  s.spendOn.set(i * world.n + r, (s.spendOn.get(i * world.n + r) ?? 0) + k);
-  if (!rng.chance(sc.pi)) return;
+  s.spendOn.set(key, (s.spendOn.get(key) ?? 0) + k);
+  const p = Math.min(1, skillIn(agent, world.area[r], s.sc.agents.specialist) * world.p[r]);
+  const failures = s.failures.get(key) ?? 0;
+  if (!s.oracle.succeeds({ agent: i, result: r, p, failures, rng: s.rng, payload: choice.payload })) {
+    s.failures.set(key, failures + 1);
+    return;
+  }
 
   s.proved[i].add(r);
   s.known[i].add(r);
@@ -155,7 +126,7 @@ function attempt(s: State, i: number, rivalsAt: Int32Array, choose: (scores: num
     isTarget: world.isTarget[r],
     publish: () => publishBundle(s, i, r),
     schedule: (at) => s.scheduled.set(at, [...(s.scheduled.get(at) ?? []), [i, r]]),
-    agentWouldPublish: () => wouldPublish(s, i, r, sc.win, sc.later),
+    agentWouldPublish: () => decider.wouldPublish(i, r, choice),
   });
 }
 
@@ -167,17 +138,12 @@ export function run(sc: Scenario, seed: number): RunResult {
   if (!agents.length) throw new Error('scenario: agents.mix has no agents');
   const w = ledgerWeights(world, sc.attribution.noise, rng.fork(3));
   const share = shares(world, sc.rules.alpha, w);
-  const S = attributionValue(world, share, w, sc.rules.c, sc.rules.mint);
-  const down = world.targetsBelow.map((ts) => Math.max(0, ...ts.map((t) => world.bounty[t])));
   const perception = rng.fork(4);
-  const noisy = (base: number[], q: number) =>
-    Float64Array.from(base, (x) => Math.max(0, x * (1 + sc.behaviour.perceptionNoise * (1 - q) * perception.normal())));
   const N = agents.length;
   const s: State = {
     sc, world, agents, rng: rng.fork(5), share, w,
     visibility: visibilities.create(sc.rules.visibility, 'rules.visibility'),
-    seenS: agents.map((a) => noisy(S, a.traits.conjecture)),
-    seenDown: agents.map((a) => noisy(down, a.traits.conjecture)),
+    oracle: oracles.create(sc.success.oracle, 'success.oracle'),
     known: agents.map(() => new Set()),
     proved: agents.map(() => new Set()),
     author: new Int32Array(world.n).fill(-1),
@@ -190,13 +156,21 @@ export function run(sc: Scenario, seed: number): RunResult {
     spendOn: new Map(),
     spendTrivial: 0,
     spend: 0,
+    rivalsAt: new Int32Array(world.n),
+    failures: new Map(),
     duplicates: 0,
     trivialPublished: 0,
     round: 0,
   };
   const allocation = allocations.create(sc.budget.allocation, 'budget.allocation')(N);
-  const policy = policies.create(sc.behaviour.policy, 'behaviour.policy');
-  const choose = (scores: number[]) => policy.choose(scores, s.rng);
+  // One decider per kind; an archetype may override the default (agents.deciders).
+  const built = new Map<string, Decider>();
+  const deciderFor = agents.map((a) => {
+    const config = sc.agents.deciders[a.archetype] ?? sc.behaviour.decider;
+    const name = JSON.stringify(config);
+    if (!built.has(name)) built.set(name, deciders.create(config, `decider for ${a.archetype}`)({ s, perception }));
+    return built.get(name)!;
+  });
 
   const { X, perAgentPerRound } = sc.budget;
   const T = perAgentPerRound ? Math.round(X / (N * perAgentPerRound)) : sc.budget.rounds;
@@ -221,9 +195,9 @@ export function run(sc: Scenario, seed: number): RunResult {
     for (const [i, r] of s.scheduled.get(t) ?? []) if (s.author[r] < 0) publishBundle(s, i, r);
     s.scheduled.delete(t);
     // How many agents can currently attempt each result, to estimate the race for it.
-    const rivalsAt = new Int32Array(world.n);
-    for (const a of agents) for (const r of frontierOf(s, a.id)) rivalsAt[r]++;
-    for (const i of turns) attempt(s, i, rivalsAt, choose);
+    s.rivalsAt = new Int32Array(world.n);
+    for (const a of agents) for (const r of frontierOf(s, a.id)) s.rivalsAt[r]++;
+    for (const i of turns) attempt(s, i, deciderFor[i]);
     // Uptake of published results by agents who have not yet taken them up (reuse).
     for (const a of agents) {
       for (let r = 0; r < world.n; r++) {

@@ -22,6 +22,8 @@ world:
 success:                 # success chance per attempt, before skill: p = p0 · eta^(level − 1)
   p0: 0.5
   eta: 0.6
+  oracle:
+    kind: chance         # what decides an attempt: succeeds with chance p (also: learning)
 
 attribution:
   noise: 0               # noise in the ledger's attribution weights (0 = exact, as in Lean)
@@ -45,6 +47,7 @@ agents:
   specialist:
     boost: 1.6           # skill multiplier in the specialist's area
     penalty: 0.4         # and elsewhere
+  deciders: {}           # per-archetype deciders, e.g. { gamer: { kind: random } }; default behaviour.decider
 
 rules:                   # the only thing that differs between traditional research and OSO
   alpha: 1               # share of incoming value a result keeps (traditional: 1)
@@ -65,6 +68,8 @@ budget:
     smoothing: 0.7
 
 behaviour:
+  decider:
+    kind: formula        # how agents decide (also: random); formula uses the settings below
   policy:
     kind: softmax        # choose by expected value, with some randomness
     tau: 0.3             # temperature, relative to the best score

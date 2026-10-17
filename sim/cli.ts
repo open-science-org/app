@@ -5,12 +5,14 @@
 //     --seeds N        seeds per row (default: the experiment's)
 //     --set path=value override any scenario setting for every row (repeatable; value is JSON or text)
 //     --save           write sim/results/<id>/ and add a line to sim/results/LOG.md
-//   npm run sim -- plugins                          list worlds, visibility rules, allocations, policies, columns
+//   npm run sim -- plugins                          list every plugin: worlds, oracles, deciders, rules, columns
 import { execSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadExperiment, runExperiment, analyses, type ExperimentSpec, type Output } from './experiment.ts';
+import { deciders } from './deciders.ts';
 import { COLUMNS } from './measures.ts';
+import { oracles } from './oracles.ts';
 import { allocations, policies, visibilities } from './rules.ts';
 import { worlds } from './world.ts';
 
@@ -33,8 +35,10 @@ const resultsDir = join(simDir, 'results');
 const experimentIds = readdirSync(join(simDir, 'experiments')).filter((f) => f.endsWith('.yaml')).map((f) => f.slice(0, -5)).sort();
 
 if (target === 'plugins') {
-  for (const [name, reg] of [['World generators (world.kind)', worlds], ['Visibility rules (rules.visibility.kind)', visibilities],
-    ['Compute allocation (budget.allocation.kind)', allocations], ['Choice policies (behaviour.policy.kind)', policies]] as const) {
+  for (const [name, reg] of [['World generators (world.kind)', worlds], ['Success oracles (success.oracle.kind)', oracles],
+    ['Deciders (behaviour.decider.kind, agents.deciders.<archetype>.kind)', deciders],
+    ['Visibility rules (rules.visibility.kind)', visibilities], ['Compute allocation (budget.allocation.kind)', allocations],
+    ['Choice policies for the formula decider (behaviour.policy.kind)', policies]] as const) {
     console.log(`\n${name}`);
     for (const p of reg.describe()) console.log(`  ${p.kind.padEnd(16)} ${p.description}\n${' '.repeat(19)}parameters: ${JSON.stringify(p.defaults)}`);
   }
