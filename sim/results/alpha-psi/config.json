@@ -1,21 +1,68 @@
 {
   "experiment": "alpha-psi",
-  "date": "2026-10-16",
-  "commit": "6501aec",
+  "date": "2026-10-17",
+  "commit": "d369863",
   "dirty": false,
   "command": "npm run sim -- alpha-psi --seeds 100 --save",
   "seeds": 100,
+  "overrides": {},
   "config": {
+    "experiment": {
+      "id": "alpha-psi",
+      "title": "Where sharing becomes rational: α × scoop risk ψ × cited share c",
+      "description": "Agent's-choice visibility. ψ is how much publishing a lemma raises a rival's chance of winning the target below it; c is the share of each mint paid to what a result built on.",
+      "seeds": 100,
+      "set": {
+        "rules.visibility": {
+          "kind": "choice"
+        }
+      },
+      "factors": [
+        {
+          "name": "ψ",
+          "path": "behaviour.psi",
+          "values": [
+            0.5,
+            0.25,
+            0.1
+          ]
+        },
+        {
+          "name": "α",
+          "path": "rules.alpha",
+          "values": [
+            1,
+            0.8,
+            0.5,
+            0.3,
+            0.1
+          ]
+        },
+        {
+          "name": "c",
+          "path": "rules.c",
+          "values": [
+            0,
+            0.15
+          ]
+        }
+      ],
+      "exclude": [
+        {
+          "rules.alpha": 1,
+          "rules.c": 0.15
+        }
+      ]
+    },
     "base": {
       "world": {
+        "kind": "layered",
         "levels": 8,
         "width": 10,
         "maxPrereqs": 3,
         "skipProb": 0.25,
         "areas": 3,
         "areaStickiness": 0.8,
-        "p0": 0.5,
-        "eta": 0.6,
         "targets": [
           {
             "level": 3,
@@ -34,493 +81,577 @@
             "count": 1
           }
         ],
-        "B0": 4,
-        "g": 2
+        "bountyBase": 4,
+        "bountyGrowth": 2
       },
-      "mix": {
-        "foundation": 3,
-        "racer": 3,
-        "explorer": 2,
-        "specialist": 2,
-        "freeRider": 1,
-        "gamer": 1
+      "success": {
+        "p0": 0.5,
+        "eta": 0.6
       },
-      "X": 1200,
-      "T": 120,
-      "m": 1,
-      "theta": 0.5,
-      "rho": 0.5,
-      "lambdaE": 0.7,
-      "sigmaW": 0,
-      "tau": 0.3,
-      "epsilon": 0.05,
-      "sigma0": 1,
-      "kappa": 1,
-      "psi": 0.5,
-      "roundsPerLevel": 5,
-      "targetLevel": 7
+      "attribution": {
+        "noise": 0
+      },
+      "agents": {
+        "archetypes": {
+          "plain": {
+            "skill": 1,
+            "conjecture": 1,
+            "cost": 1,
+            "horizon": 1,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "foundation": {
+            "skill": 1,
+            "conjecture": 0.7,
+            "cost": 1,
+            "horizon": 0.98,
+            "risk": 0.2,
+            "reuse": 0.9,
+            "sharing": 0.5,
+            "gaming": 0,
+            "specialist": false
+          },
+          "racer": {
+            "skill": 1,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.85,
+            "risk": -0.2,
+            "reuse": 0.6,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "explorer": {
+            "skill": 0.5,
+            "conjecture": 0.3,
+            "cost": 0.3,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": false
+          },
+          "specialist": {
+            "skill": 1,
+            "conjecture": 0.6,
+            "cost": 1,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": true
+          },
+          "freeRider": {
+            "skill": 0.8,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": -1,
+            "gaming": 0,
+            "specialist": false
+          },
+          "gamer": {
+            "skill": 0.8,
+            "conjecture": 0.3,
+            "cost": 0.5,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0,
+            "gaming": 0.6,
+            "specialist": false
+          }
+        },
+        "mix": {
+          "foundation": 3,
+          "racer": 3,
+          "explorer": 2,
+          "specialist": 2,
+          "freeRider": 1,
+          "gamer": 1
+        },
+        "specialist": {
+          "boost": 1.6,
+          "penalty": 0.4
+        }
+      },
+      "rules": {
+        "alpha": 1,
+        "c": 0,
+        "mint": 1,
+        "screen": 0.5,
+        "visibility": {
+          "kind": "choice"
+        }
+      },
+      "budget": {
+        "X": 1200,
+        "rounds": 120,
+        "perAgentPerRound": null,
+        "stopWhenSolved": true,
+        "allocation": {
+          "kind": "earnings-share",
+          "rho": 0.5,
+          "smoothing": 0.7
+        }
+      },
+      "behaviour": {
+        "policy": {
+          "kind": "softmax",
+          "tau": 0.3,
+          "epsilon": 0.05
+        },
+        "perceptionNoise": 1,
+        "kappa": 1,
+        "psi": 0.5,
+        "roundsPerLevel": 5
+      },
+      "measures": {
+        "targetLevel": 7
+      }
     },
-    "grid": [
+    "rows": [
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 1,
           "c": 0
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.8,
           "c": 0
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.8,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.5,
           "c": 0
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.5,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.3,
           "c": 0
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.3,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.1,
           "c": 0
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.5,
           "α": 0.1,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.5
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.5
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 1,
           "c": 0
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.8,
           "c": 0
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.8,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.5,
           "c": 0
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.5,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.3,
           "c": 0
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.3,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.1,
           "c": 0
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.25,
           "α": 0.1,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.25
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.25
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 1,
           "c": 0
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.8,
           "c": 0
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.8,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.8,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.5,
           "c": 0
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.5,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.5,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.5,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.3,
           "c": 0
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.3,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.3,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.3,
+            "c": 0.15
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.1,
           "c": 0
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0
           }
         }
       },
       {
-        "label": {
+        "labels": {
           "ψ": 0.1,
           "α": 0.1,
           "c": 0.15
         },
-        "over": {
-          "psi": 0.1
-        },
-        "rules": {
-          "alpha": 0.1,
-          "c": 0.15,
-          "visibility": {
-            "kind": "choice"
+        "overrides": {
+          "behaviour": {
+            "psi": 0.1
+          },
+          "rules": {
+            "alpha": 0.1,
+            "c": 0.15
           }
         }
       }
-    ],
-    "seeds": 100
+    ]
   }
 }

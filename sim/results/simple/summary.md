@@ -2,12 +2,13 @@
 
 A single chain of 300 results, each with success chance p = 0.2 per attempt; N identical agents; X = 640 attempts in total, one per agent per round. Shared: every result is published and taken up at once. Hidden: nothing is published until the end of the chain, which no one reaches. Measure: the deepest result proved by anyone. The exact values come from sim/analytic.ts.
 
-- **Date:** 2026-10-16
-- **Code:** commit `6501aec`
+- **Date:** 2026-10-17
+- **Code:** commit `d369863`
+- **Experiment:** [sim/experiments/simple.yaml](../../experiments/simple.yaml)
 - **Command:** `npm run sim -- simple --seeds 1000 --save`
-- **Runs:** 10000 (1000 seeds per row), in `runs.jsonl`; all parameters in `config.json`
+- **Runs:** 10000 (1000 seeds per row), in `runs.jsonl`; the full configuration in `config.json`
 
-Values are mean ± standard deviation over seeds, except in the simple model, where they are mean ± standard error so they can be compared with the exact values.
+Values are mean ± standard error, so they can be compared with the exact values.
 
 | N | shared: simulated | shared: exact | hidden: simulated | hidden: exact | gain: simulated | gain: exact |
 | --- | --- | --- | --- | --- | --- | --- |

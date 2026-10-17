@@ -2,12 +2,13 @@
 
 Agent's-choice visibility. ψ is how much publishing a lemma raises a rival's chance of winning the target below it; c is the share of each mint paid to what a result built on.
 
-- **Date:** 2026-10-16
-- **Code:** commit `6501aec`
+- **Date:** 2026-10-17
+- **Code:** commit `d369863`
+- **Experiment:** [sim/experiments/alpha-psi.yaml](../../experiments/alpha-psi.yaml)
 - **Command:** `npm run sim -- alpha-psi --seeds 100 --save`
-- **Runs:** 2700 (100 seeds per row), in `runs.jsonl`; all parameters in `config.json`
+- **Runs:** 2700 (100 seeds per row), in `runs.jsonl`; the full configuration in `config.json`
 
-Values are mean ± standard deviation over seeds, except in the simple model, where they are mean ± standard error so they can be compared with the exact values.
+Values are mean ± standard deviation over seeds.
 
 | ψ | α | c | frontier | reach L7 | speed | cost | spend | results per 100 | breadth | waste | credit | sharing | hoarded |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -2,12 +2,13 @@
 
 Traditional and OSO (immediate) under four variants. Under traditional rules only target winners and spammers earn early, so the compute loop can hand the gaming agent most of the budget.
 
-- **Date:** 2026-10-16
-- **Code:** commit `6501aec`
+- **Date:** 2026-10-17
+- **Code:** commit `d369863`
+- **Experiment:** [sim/experiments/sensitivity.yaml](../../experiments/sensitivity.yaml)
 - **Command:** `npm run sim -- sensitivity --seeds 100 --save`
-- **Runs:** 800 (100 seeds per row), in `runs.jsonl`; all parameters in `config.json`
+- **Runs:** 800 (100 seeds per row), in `runs.jsonl`; the full configuration in `config.json`
 
-Values are mean ± standard deviation over seeds, except in the simple model, where they are mean ± standard error so they can be compared with the exact values.
+Values are mean ± standard deviation over seeds.
 
 | variant | setting | frontier | reach L7 | speed | cost | spend | results per 100 | breadth | waste | credit | sharing | hoarded | gamer share of pay | trivial spend |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

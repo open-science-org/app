@@ -2,12 +2,13 @@
 
 Traditional research (α = 1, c = 0, finished-only), OSO (α = 0.8, c = 0.15) with immediate and with agent's-choice visibility, and the mixed corners. Same world parameters, agents and budget in every setting; each seed gives the same world and agents across settings.
 
-- **Date:** 2026-10-16
-- **Code:** commit `6501aec`
+- **Date:** 2026-10-17
+- **Code:** commit `d369863`
+- **Experiment:** [sim/experiments/settings.yaml](../../experiments/settings.yaml)
 - **Command:** `npm run sim -- settings --seeds 100 --save`
-- **Runs:** 600 (100 seeds per row), in `runs.jsonl`; all parameters in `config.json`
+- **Runs:** 600 (100 seeds per row), in `runs.jsonl`; the full configuration in `config.json`
 
-Values are mean ± standard deviation over seeds, except in the simple model, where they are mean ± standard error so they can be compared with the exact values.
+Values are mean ± standard deviation over seeds.
 
 | setting | frontier | reach L7 | speed | cost | spend | results per 100 | breadth | waste | credit | sharing | hoarded | gamer share of pay | trivial spend |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

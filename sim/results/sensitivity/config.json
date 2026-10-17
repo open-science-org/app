@@ -1,21 +1,83 @@
 {
   "experiment": "sensitivity",
-  "date": "2026-10-16",
-  "commit": "6501aec",
+  "date": "2026-10-17",
+  "commit": "d369863",
   "dirty": false,
   "command": "npm run sim -- sensitivity --seeds 100 --save",
   "seeds": 100,
+  "overrides": {},
   "config": {
+    "experiment": {
+      "id": "sensitivity",
+      "title": "How much the traditional-vs-OSO gap depends on the gamer and the compute loop",
+      "description": "Traditional and OSO (immediate) under four variants. Under traditional rules only target winners and spammers earn early, so the compute loop can hand the gaming agent most of the budget.",
+      "seeds": 100,
+      "factors": [
+        {
+          "name": "variant",
+          "levels": [
+            {
+              "label": "default (ρ = 0.5, θ = 0.5)"
+            },
+            {
+              "label": "no compute loop (ρ = 0)",
+              "set": {
+                "budget.allocation.rho": 0
+              }
+            },
+            {
+              "label": "strong screen (θ = 0.9)",
+              "set": {
+                "rules.screen": 0.9
+              }
+            },
+            {
+              "label": "no gamer",
+              "set": {
+                "agents.mix.gamer": 0
+              }
+            }
+          ]
+        },
+        {
+          "name": "setting",
+          "levels": [
+            {
+              "label": "Traditional",
+              "preset": "traditional"
+            },
+            {
+              "label": "OSO (immediate)",
+              "preset": "oso"
+            }
+          ]
+        }
+      ],
+      "columns": [
+        "frontier",
+        "reachTarget",
+        "speed",
+        "cost",
+        "spend",
+        "productivity",
+        "breadth",
+        "waste",
+        "credit",
+        "sharing",
+        "hoarded",
+        "gamerShare",
+        "trivialSpend"
+      ]
+    },
     "base": {
       "world": {
+        "kind": "layered",
         "levels": 8,
         "width": 10,
         "maxPrereqs": 3,
         "skipProb": 0.25,
         "areas": 3,
         "areaStickiness": 0.8,
-        "p0": 0.5,
-        "eta": 0.6,
         "targets": [
           {
             "level": 3,
@@ -34,62 +96,287 @@
             "count": 1
           }
         ],
-        "B0": 4,
-        "g": 2
+        "bountyBase": 4,
+        "bountyGrowth": 2
       },
-      "mix": {
-        "foundation": 3,
-        "racer": 3,
-        "explorer": 2,
-        "specialist": 2,
-        "freeRider": 1,
-        "gamer": 1
+      "success": {
+        "p0": 0.5,
+        "eta": 0.6
       },
-      "X": 1200,
-      "T": 120,
-      "m": 1,
-      "theta": 0.5,
-      "rho": 0.5,
-      "lambdaE": 0.7,
-      "sigmaW": 0,
-      "tau": 0.3,
-      "epsilon": 0.05,
-      "sigma0": 1,
-      "kappa": 1,
-      "psi": 0.5,
-      "roundsPerLevel": 5,
-      "targetLevel": 7
+      "attribution": {
+        "noise": 0
+      },
+      "agents": {
+        "archetypes": {
+          "plain": {
+            "skill": 1,
+            "conjecture": 1,
+            "cost": 1,
+            "horizon": 1,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "foundation": {
+            "skill": 1,
+            "conjecture": 0.7,
+            "cost": 1,
+            "horizon": 0.98,
+            "risk": 0.2,
+            "reuse": 0.9,
+            "sharing": 0.5,
+            "gaming": 0,
+            "specialist": false
+          },
+          "racer": {
+            "skill": 1,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.85,
+            "risk": -0.2,
+            "reuse": 0.6,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "explorer": {
+            "skill": 0.5,
+            "conjecture": 0.3,
+            "cost": 0.3,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": false
+          },
+          "specialist": {
+            "skill": 1,
+            "conjecture": 0.6,
+            "cost": 1,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": true
+          },
+          "freeRider": {
+            "skill": 0.8,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": -1,
+            "gaming": 0,
+            "specialist": false
+          },
+          "gamer": {
+            "skill": 0.8,
+            "conjecture": 0.3,
+            "cost": 0.5,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0,
+            "gaming": 0.6,
+            "specialist": false
+          }
+        },
+        "mix": {
+          "foundation": 3,
+          "racer": 3,
+          "explorer": 2,
+          "specialist": 2,
+          "freeRider": 1,
+          "gamer": 1
+        },
+        "specialist": {
+          "boost": 1.6,
+          "penalty": 0.4
+        }
+      },
+      "rules": {
+        "alpha": 1,
+        "c": 0,
+        "mint": 1,
+        "screen": 0.5,
+        "visibility": {
+          "kind": "finished-only"
+        }
+      },
+      "budget": {
+        "X": 1200,
+        "rounds": 120,
+        "perAgentPerRound": null,
+        "stopWhenSolved": true,
+        "allocation": {
+          "kind": "earnings-share",
+          "rho": 0.5,
+          "smoothing": 0.7
+        }
+      },
+      "behaviour": {
+        "policy": {
+          "kind": "softmax",
+          "tau": 0.3,
+          "epsilon": 0.05
+        },
+        "perceptionNoise": 1,
+        "kappa": 1,
+        "psi": 0.5,
+        "roundsPerLevel": 5
+      },
+      "measures": {
+        "targetLevel": 7
+      }
     },
-    "variants": [
+    "rows": [
       {
-        "variant": "default (ρ = 0.5, θ = 0.5)",
-        "over": {}
-      },
-      {
-        "variant": "no compute loop (ρ = 0)",
-        "over": {
-          "rho": 0
+        "labels": {
+          "variant": "default (ρ = 0.5, θ = 0.5)",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
         }
       },
       {
-        "variant": "strong screen (θ = 0.9)",
-        "over": {
-          "theta": 0.9
+        "labels": {
+          "variant": "default (ρ = 0.5, θ = 0.5)",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
+          }
         }
       },
       {
-        "variant": "no gamer",
-        "over": {
-          "mix": {
-            "foundation": 3,
-            "racer": 3,
-            "explorer": 2,
-            "specialist": 2,
-            "freeRider": 1
+        "labels": {
+          "variant": "no compute loop (ρ = 0)",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "budget": {
+            "allocation": {
+              "rho": 0
+            }
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "variant": "no compute loop (ρ = 0)",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "budget": {
+            "allocation": {
+              "rho": 0
+            }
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "variant": "strong screen (θ = 0.9)",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "rules": {
+            "screen": 0.9,
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "variant": "strong screen (θ = 0.9)",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "rules": {
+            "screen": 0.9,
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "variant": "no gamer",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "agents": {
+            "mix": {
+              "gamer": 0
+            }
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "variant": "no gamer",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "agents": {
+            "mix": {
+              "gamer": 0
+            }
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
           }
         }
       }
-    ],
-    "seeds": 100
+    ]
   }
 }
