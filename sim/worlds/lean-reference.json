@@ -1,0 +1,264 @@
+{
+ "source": "Lean problem set reference DAG (anonymized)",
+ "nodes": [
+  {
+   "id": "A-01",
+   "area": 0
+  },
+  {
+   "id": "A-02",
+   "area": 0
+  },
+  {
+   "id": "A-03",
+   "area": 0
+  },
+  {
+   "id": "A-04",
+   "area": 0
+  },
+  {
+   "id": "B-01",
+   "area": 1
+  },
+  {
+   "id": "B-02",
+   "area": 1
+  },
+  {
+   "id": "B-03",
+   "area": 1
+  },
+  {
+   "id": "B-04",
+   "area": 1
+  },
+  {
+   "id": "B-05",
+   "area": 1
+  },
+  {
+   "id": "B-06",
+   "area": 1
+  },
+  {
+   "id": "B-07",
+   "area": 1
+  },
+  {
+   "id": "B-08",
+   "area": 1
+  },
+  {
+   "id": "C-01",
+   "area": 2
+  },
+  {
+   "id": "C3",
+   "area": 2,
+   "bounty": 4
+  },
+  {
+   "id": "C-02",
+   "area": 2
+  },
+  {
+   "id": "C-03",
+   "area": 2
+  },
+  {
+   "id": "C-04",
+   "area": 2
+  },
+  {
+   "id": "C-05",
+   "area": 2
+  },
+  {
+   "id": "C-06",
+   "area": 2
+  },
+  {
+   "id": "X-01",
+   "area": 3
+  },
+  {
+   "id": "A3",
+   "area": 0,
+   "prereqs": [
+    "A-01"
+   ],
+   "bounty": 8
+  },
+  {
+   "id": "A-05",
+   "area": 0,
+   "prereqs": [
+    "A-03"
+   ]
+  },
+  {
+   "id": "B-09",
+   "area": 1,
+   "prereqs": [
+    "B-02"
+   ]
+  },
+  {
+   "id": "B-10",
+   "area": 1,
+   "prereqs": [
+    "B-06"
+   ]
+  },
+  {
+   "id": "B-11",
+   "area": 1,
+   "prereqs": [
+    "B-07"
+   ]
+  },
+  {
+   "id": "B-12",
+   "area": 1,
+   "prereqs": [
+    "B-04"
+   ]
+  },
+  {
+   "id": "C-07",
+   "area": 2,
+   "prereqs": [
+    "C3",
+    "C-02"
+   ]
+  },
+  {
+   "id": "C-08",
+   "area": 2,
+   "prereqs": [
+    "C-03",
+    "C-04"
+   ]
+  },
+  {
+   "id": "X-02",
+   "area": 3,
+   "prereqs": [
+    "A-02"
+   ]
+  },
+  {
+   "id": "A-06",
+   "area": 0,
+   "prereqs": [
+    "A-05"
+   ]
+  },
+  {
+   "id": "B-13",
+   "area": 1,
+   "prereqs": [
+    "B-10",
+    "B-08"
+   ]
+  },
+  {
+   "id": "B-14",
+   "area": 1,
+   "prereqs": [
+    "B-01",
+    "B-03",
+    "B-11"
+   ]
+  },
+  {
+   "id": "B-15",
+   "area": 1,
+   "prereqs": [
+    "B-12",
+    "B-08"
+   ]
+  },
+  {
+   "id": "C4",
+   "area": 2,
+   "prereqs": [
+    "C-08"
+   ],
+   "bounty": 16
+  },
+  {
+   "id": "X1",
+   "area": 3,
+   "prereqs": [
+    "C-07",
+    "X-01"
+   ],
+   "bounty": 16
+  },
+  {
+   "id": "A-07",
+   "area": 0,
+   "prereqs": [
+    "A-06"
+   ]
+  },
+  {
+   "id": "B3",
+   "area": 1,
+   "prereqs": [
+    "B-13"
+   ],
+   "bounty": 32
+  },
+  {
+   "id": "A-08",
+   "area": 0,
+   "prereqs": [
+    "A-06",
+    "A-01",
+    "A-07"
+   ]
+  },
+  {
+   "id": "B5",
+   "area": 1,
+   "prereqs": [
+    "B-09",
+    "B3",
+    "B-14",
+    "B-12",
+    "B-08"
+   ],
+   "bounty": 64
+  },
+  {
+   "id": "X2",
+   "area": 3,
+   "prereqs": [
+    "B-09",
+    "B3",
+    "B-12",
+    "B-08",
+    "X-02"
+   ],
+   "bounty": 64
+  },
+  {
+   "id": "A-09",
+   "area": 0,
+   "prereqs": [
+    "A-08"
+   ]
+  },
+  {
+   "id": "A5",
+   "area": 0,
+   "prereqs": [
+    "A-09"
+   ],
+   "bounty": 256
+  }
+ ]
+}

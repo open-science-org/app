@@ -25,6 +25,11 @@ export interface RunResult {
   published: number;
   trivialPublished: number;
   targetsSolved: number;
+  /** Targets rejected because they rested on a wrong result, and wrong results retracted. */
+  rejectedTargets: number;
+  retracted: number;
+  /** Share of spend on absorbing others' results. */
+  absorbShare: number;
   /** Total paid out, for accounting checks. */
   totalEarnings: number;
   earningsByArchetype: Record<string, number>;
@@ -89,6 +94,9 @@ export function measure(s: State, curve: RunResult['curve'], speed: number | nul
     published: published.length,
     trivialPublished: s.trivialPublished,
     targetsSolved: world.targets.filter((t) => s.author[t] >= 0).length,
+    rejectedTargets: s.rejectedTargets,
+    retracted: s.retracted,
+    absorbShare: s.spendAbsorb / spend,
     totalEarnings: payTotal,
     earningsByArchetype: byArchetype,
   };
@@ -140,4 +148,7 @@ export const COLUMNS: Record<string, Column> = {
     },
   },
   trivialSpend: { header: () => 'trivial spend', value: (rs) => msd(rs.map((r) => r.wasteParts.trivial)) },
+  rejected: { header: () => 'rejected targets', value: (rs) => msd(rs.map((r) => r.rejectedTargets), 1) },
+  retracted: { header: () => 'retracted', value: (rs) => msd(rs.map((r) => r.retracted), 1) },
+  absorbSpend: { header: () => 'absorb spend', value: (rs) => msd(rs.map((r) => r.absorbShare)) },
 };

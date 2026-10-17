@@ -1,0 +1,22 @@
+id: complex
+title: 'All together on the Lean tree: learning, shared failures, costly and fallible sharing'
+description: >-
+  The Lean reference tree; every agent learns from failure (learning oracle, gain 0.1). Knowledge is
+  either free and always correct, or costly (absorbCost 0.25) and fallible (errorRate 0.05). OSO is
+  run with and without publishing failed attempts.
+seeds: 100
+scenario: lean-tree
+set:
+  success.oracle: { kind: learning, gain: 0.1 }
+factors:
+  - name: knowledge
+    levels:
+      - { label: free and correct }
+      - { label: costly and fallible, set: { knowledge: { absorbCost: 0.25, errorRate: 0.05 } } }
+  - name: setting
+    levels:
+      - { label: Traditional, preset: traditional }
+      - { label: OSO (immediate), preset: oso }
+      - { label: OSO + public failures, preset: oso, set: { rules.publishFailures: true } }
+      - { label: OSO (choice), preset: osoChoice }
+columns: [frontier, reachTarget, speed, cost, spend, targetsSolved, absorbSpend, rejected, retracted, sharing, credit]

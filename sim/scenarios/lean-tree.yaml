@@ -1,0 +1,12 @@
+# The Lean problem set's reference tree as the world (sim/worlds/lean-reference.json): 42 results in
+# three areas plus cross-area results, 8 posted targets with their bounties (4 · 2^(depth − 1)).
+# Success chances follow the default success model by level until the Lean pilot measures them.
+world:
+  kind: file
+  path: worlds/lean-reference.json
+  areas: 4               # A, B, C and cross-area
+measures:
+  targetLevel: 5         # B5 and X2 are at depth 5; A5 at depth 7
+budget:
+  X: 400                 # tight enough that settings differ: OSO solves all targets for about 250
+  rounds: 40

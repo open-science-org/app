@@ -39,6 +39,19 @@ export interface State {
   rivalsAt: Int32Array;
   /** Failed attempts by agent and result (key: agent × n + result), for oracles that learn. */
   failures: Map<number, number>;
+  /** Failed attempts on each result that were made public (rules.publishFailures). */
+  publicFailures: Int32Array;
+  /** Compute each agent carries into the next round; negative after absorbing costly results. */
+  carry: Float64Array;
+  /** Compute spent absorbing others' published results (knowledge.absorbCost). */
+  spendAbsorb: number;
+  /** Results each agent knows in a wrong version (knowledge.errorRate). */
+  flawed: Set<number>[];
+  /** 1 if the published version of a result is wrong. */
+  publishedFlawed: Uint8Array;
+  /** Targets rejected because they rested on a wrong result, and results retracted as wrong. */
+  rejectedTargets: number;
+  retracted: number;
   duplicates: number;
   trivialPublished: number;
   round: number;
@@ -65,8 +78,59 @@ function publishOne(s: State, i: number, x: number) {
   s.roundEarnings[i] += ps.length ? (1 - c) * mint : mint;
   ps.forEach((j, k) => payInto(s, j, c * mint * s.w[x][k]));
   if (world.isTarget[x]) payInto(s, x, world.bounty[x], true);
+  if (s.flawed[i].has(x)) s.publishedFlawed[x] = 1;
+  // Free knowledge is taken up at once; costly knowledge at the start of the next round (absorb).
+  if (s.sc.knowledge.absorbCost > 0) return;
   for (const a of s.agents) {
-    if (a.id !== i && !s.known[a.id].has(x) && s.rng.chance(a.traits.reuse)) s.known[a.id].add(x);
+    if (a.id !== i && !s.known[a.id].has(x) && s.rng.chance(a.traits.reuse)) takeUp(s, a.id, x);
+  }
+}
+
+/** Agent a takes up published result x: it can now build on it. */
+function takeUp(s: State, a: number, x: number) {
+  s.known[a].add(x);
+  if (s.publishedFlawed[x]) s.flawed[a].add(x);
+}
+
+/**
+ * Costly knowledge (knowledge.absorbCost > 0): at the start of a round, each agent absorbs published
+ * results it does not know, oldest level first, each with its reuse chance, paying from this round's
+ * compute while it can afford to. Returns the compute left for attempts.
+ */
+function absorb(s: State, a: number, budget: number): number {
+  const cost = s.sc.knowledge.absorbCost;
+  const reuse = s.agents[a].traits.reuse;
+  const pending = [];
+  for (let r = 0; r < s.world.n; r++) if (s.author[r] >= 0 && !s.known[a].has(r)) pending.push(r);
+  pending.sort((x, y) => s.world.level[x] - s.world.level[y] || x - y);
+  for (const r of pending) {
+    if (budget < cost) break;
+    if (!s.rng.chance(reuse)) continue;
+    takeUp(s, a, r);
+    budget -= cost;
+    s.spend += cost;
+    s.spendAbsorb += cost;
+  }
+  return budget;
+}
+
+/**
+ * Agent i has found that result x is wrong. It drops x; if the published version is the wrong one,
+ * the publication is retracted and every agent that took it up drops it too (mints already paid stay).
+ */
+function retract(s: State, i: number, x: number) {
+  const drop = (a: number) => {
+    s.known[a].delete(x);
+    s.proved[a].delete(x);
+    s.flawed[a].delete(x);
+  };
+  drop(i);
+  s.retracted++;
+  if (s.author[x] >= 0 && s.publishedFlawed[x]) {
+    for (const a of s.agents) if (s.flawed[a.id].has(x)) drop(a.id);
+    s.author[x] = -1;
+    s.pubRound[x] = -1;
+    s.publishedFlawed[x] = 0;
   }
 }
 
@@ -109,10 +173,23 @@ function attempt(s: State, i: number, decider: Decider) {
   s.spendOn.set(key, (s.spendOn.get(key) ?? 0) + k);
   const p = Math.min(1, skillIn(agent, world.area[r], s.sc.agents.specialist) * world.p[r]);
   const failures = s.failures.get(key) ?? 0;
-  if (!s.oracle.succeeds({ agent: i, result: r, p, failures, rng: s.rng, payload: choice.payload })) {
+  const othersFailures = s.publicFailures[r] - (s.sc.rules.publishFailures ? failures : 0);
+  if (!s.oracle.succeeds({ agent: i, result: r, p, failures, othersFailures, rng: s.rng, payload: choice.payload })) {
     s.failures.set(key, failures + 1);
+    if (s.sc.rules.publishFailures) s.publicFailures[r]++;
     return;
   }
+
+  // A proof is wrong with chance errorRate, and anything built on a wrong result is wrong too.
+  const { errorRate } = s.sc.knowledge;
+  const wrong = (errorRate > 0 && s.rng.chance(errorRate)) || world.prereqs[r].some((j) => s.flawed[i].has(j));
+  if (wrong && world.isTarget[r]) {
+    // Targets are checked: the proof is rejected, and the wrong results it rested on come to light.
+    s.rejectedTargets++;
+    for (const x of world.ancestors[r]) if (s.flawed[i].has(x)) retract(s, i, x);
+    return;
+  }
+  if (wrong) s.flawed[i].add(r);
 
   s.proved[i].add(r);
   s.known[i].add(r);
@@ -158,6 +235,13 @@ export function run(sc: Scenario, seed: number): RunResult {
     spend: 0,
     rivalsAt: new Int32Array(world.n),
     failures: new Map(),
+    publicFailures: new Int32Array(world.n),
+    carry: new Float64Array(agents.length),
+    spendAbsorb: 0,
+    flawed: agents.map(() => new Set()),
+    publishedFlawed: new Uint8Array(world.n),
+    rejectedTargets: 0,
+    retracted: 0,
     duplicates: 0,
     trivialPublished: 0,
     round: 0,
@@ -175,7 +259,6 @@ export function run(sc: Scenario, seed: number): RunResult {
   const { X, perAgentPerRound } = sc.budget;
   const T = perAgentPerRound ? Math.round(X / (N * perAgentPerRound)) : sc.budget.rounds;
   if (!T || T < 1) throw new Error('scenario: set budget.rounds or budget.perAgentPerRound');
-  const carry = new Float64Array(N);
   const curve: RunResult['curve'] = [];
   const perRound = X / T;
   let speed: number | null = null;
@@ -186,9 +269,10 @@ export function run(sc: Scenario, seed: number): RunResult {
     const budgets = allocation.budgets(perRound);
     const turns: number[] = [];
     for (const a of agents) {
-      const budget = budgets[a.id] + carry[a.id];
-      const n = Math.floor(budget / a.traits.cost);
-      carry[a.id] = budget - n * a.traits.cost;
+      let budget = budgets[a.id] + s.carry[a.id];
+      if (sc.knowledge.absorbCost > 0) budget = absorb(s, a.id, budget);
+      const n = Math.max(0, Math.floor(budget / a.traits.cost));
+      s.carry[a.id] = budget - n * a.traits.cost;
       for (let k = 0; k < n; k++) turns.push(a.id);
     }
     s.rng.shuffle(turns);
@@ -198,10 +282,11 @@ export function run(sc: Scenario, seed: number): RunResult {
     s.rivalsAt = new Int32Array(world.n);
     for (const a of agents) for (const r of frontierOf(s, a.id)) s.rivalsAt[r]++;
     for (const i of turns) attempt(s, i, deciderFor[i]);
-    // Uptake of published results by agents who have not yet taken them up (reuse).
-    for (const a of agents) {
+    // Uptake of published results by agents who have not yet taken them up (reuse); costly
+    // knowledge is absorbed at the start of each round instead.
+    if (sc.knowledge.absorbCost === 0) for (const a of agents) {
       for (let r = 0; r < world.n; r++) {
-        if (s.author[r] >= 0 && !s.known[a.id].has(r) && s.rng.chance(a.traits.reuse)) s.known[a.id].add(r);
+        if (s.author[r] >= 0 && !s.known[a.id].has(r) && s.rng.chance(a.traits.reuse)) takeUp(s, a.id, r);
       }
     }
     allocation.update(s.roundEarnings);

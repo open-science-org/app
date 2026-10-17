@@ -54,8 +54,17 @@ export interface Scenario {
     mint: number;
     /** Chance the validation screen rejects a trivial result. */
     screen: number;
+    /** Make failed attempts public, so others can learn from them (with a learning oracle). */
+    publishFailures: boolean;
     /** When proofs are published (registry: visibility). */
     visibility: Component;
+  };
+  /** Properties of shared knowledge (specification, section 2.3). */
+  knowledge: {
+    /** Compute an agent spends to absorb each published result it takes up. */
+    absorbCost: number;
+    /** Chance that a proof is wrong; results built on a wrong result are wrong, and targets reveal them. */
+    errorRate: number;
   };
   budget: {
     /** Total compute for the run. */

@@ -54,8 +54,14 @@ rules:                   # the only thing that differs between traditional resea
   c: 0                   # share of each mint paid to what it built on (traditional: 0)
   mint: 1
   screen: 0.5            # chance the validation screen rejects a trivial result (θ)
+  publishFailures: false # make failed attempts public, so others learn from them (with oracle: learning)
   visibility:
     kind: finished-only  # also: immediate, delayed (d), choice
+
+knowledge:                # properties of shared results (specification, section 2.3)
+  absorbCost: 0          # compute an agent spends to take up each published result
+  errorRate: 0           # chance a proof is wrong; wrong results spread to what builds on them;
+                         # a target check rejects them and retracts the wrong results it rested on
 
 budget:
   X: 1200                # total compute

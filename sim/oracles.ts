@@ -10,6 +10,8 @@ export interface AttemptContext {
   p: number;
   /** Failed attempts this agent has already made on this result. */
   failures: number;
+  /** Failed attempts by other agents on this result that were made public (rules.publishFailures). */
+  othersFailures: number;
   rng: Rng;
   /** Whatever the decider attached to the attempt, such as a written proof. */
   payload?: unknown;
@@ -27,8 +29,10 @@ oracles.register('chance', {
   create: () => ({ succeeds: (ctx) => ctx.rng.chance(ctx.p) }),
 });
 
-oracles.register<{ gain: number; cap: number }>('learning', {
-  description: 'Each failed attempt by the agent on the result raises its next chance: p × (1 + gain × failures), at most cap',
-  defaults: { gain: 0.25, cap: 1 },
-  create: ({ gain, cap }) => ({ succeeds: (ctx) => ctx.rng.chance(Math.min(cap, ctx.p * (1 + gain * ctx.failures))) }),
+oracles.register<{ gain: number; sharedWeight: number; cap: number }>('learning', {
+  description: "Failures teach: chance p × (1 + gain × (own failures + sharedWeight × others' public failures)), at most cap",
+  defaults: { gain: 0.25, sharedWeight: 1, cap: 1 },
+  create: ({ gain, sharedWeight, cap }) => ({
+    succeeds: (ctx) => ctx.rng.chance(Math.min(cap, ctx.p * (1 + gain * (ctx.failures + sharedWeight * ctx.othersFailures)))),
+  }),
 });

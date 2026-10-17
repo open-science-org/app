@@ -1,0 +1,18 @@
+id: lean-tree
+title: The six rule settings on the Lean problem set's reference tree
+description: >-
+  The same settings as `settings`, on the real shape of the Lean problem set (42 results in three
+  areas plus cross-area results, 8 targets, bounties by depth) instead of a random tree, with X = 400.
+  Success chances follow the default model by level until the Lean pilot measures them.
+seeds: 100
+scenario: lean-tree
+factors:
+  - name: setting
+    levels:
+      - { label: Traditional, preset: traditional }
+      - { label: OSO (immediate), preset: oso }
+      - { label: 'Flow-back, finished-only', preset: creditOnly }
+      - { label: 'No flow-back, immediate', preset: sharingOnly }
+      - { label: 'No flow-back, choice', preset: traditionalChoice }
+      - { label: OSO (choice), preset: osoChoice }
+columns: [frontier, reachTarget, speed, cost, spend, targetsSolved, breadth, waste, credit, sharing, gamerShare]

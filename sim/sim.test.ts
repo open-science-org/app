@@ -189,3 +189,41 @@ test('deciders can differ by archetype, and a zero-intelligence decider runs', (
   assert.ok(all.frontier >= 1);
   assert.throws(() => run(loadScenario(null, { 'agents.deciders': { gamer: { kind: 'oracle-reader' } } }), 1), /unknown decider/);
 });
+
+test('costly knowledge is paid from the budget, so spend never exceeds X', () => {
+  const runs = (absorbCost: number) => Array.from({ length: 10 }, (_, k) => run(scenarioFor('oso', { 'knowledge.absorbCost': absorbCost }), 700 + k));
+  const free = runs(0);
+  const costly = runs(1);
+  for (const r of costly) assert.ok(r.spend <= 1200 + 1e-9, `spend ${r.spend}`);
+  assert.ok(mean(costly.map((r) => r.absorbShare)) > 0.2);
+  assert.ok(mean(costly.map((r) => r.frontier)) < mean(free.map((r) => r.frontier)));
+});
+
+test('wrong results spread, are rejected at targets, and are retracted', () => {
+  const none = run(scenarioFor('oso'), 9);
+  assert.equal(none.rejectedTargets + none.retracted, 0);
+  const rs = Array.from({ length: 10 }, (_, k) => run(scenarioFor('oso', { 'knowledge.errorRate': 0.15 }), 800 + k));
+  assert.ok(mean(rs.map((r) => r.rejectedTargets)) > 1);
+  assert.ok(mean(rs.map((r) => r.retracted)) > 1);
+});
+
+test('public failures let agents learn from each other', () => {
+  const chain = (publishFailures: boolean) => loadScenario(null, {
+    world: { kind: 'chain', length: 200 },
+    success: { p0: 0.05, eta: 1, oracle: { kind: 'learning', gain: 0.1 } },
+    budget: { X: 400, perAgentPerRound: 1, allocation: { kind: 'equal' } },
+    'agents.mix': { foundation: 0, racer: 0, explorer: 0, specialist: 0, freeRider: 0, gamer: 0, plain: 4 },
+    rules: { visibility: { kind: 'immediate' }, publishFailures },
+  });
+  const depth = (sc: Scenario) => mean(Array.from({ length: 100 }, (_, k) => run(sc, 900 + k).deepestProved));
+  assert.ok(depth(chain(true)) > depth(chain(false)) + 3);
+});
+
+test('the Lean reference tree loads as a world', () => {
+  const sc = loadScenario('lean-tree');
+  const world = worldOf(sc, 1);
+  assert.equal(world.n, 42);
+  assert.equal(world.targets.length, 8);
+  assert.equal(world.levels, 7);
+  assert.ok(mean(Array.from({ length: 10 }, (_, k) => run(loadScenario('lean-tree', { rules: { alpha: 0.8, c: 0.15, visibility: { kind: 'immediate' } } }), k + 1).targetsSolved)) > 7);
+});
