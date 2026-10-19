@@ -51,28 +51,9 @@ The development page at http://localhost:8787/dev is a plain reference view of e
   - per-idea MCP endpoints;
   - deployment.
 
-## Demo simulator
+## Demo experiment
 
-`sim/` implements the research-community model in [OSO/docs/demo-model.md](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md):
-- a hidden DAG of results;
-- agents with eight traits;
-- visibility rules;
-- the waterfall, with a test that it pays what the ledger pays;
-- the compute loop.
-
-```sh
-npm run sim                      # list the experiments
-npm run sim -- all --save        # run them all and log results in sim/results/
-```
-
-[sim/README.md](sim/README.md) describes the simulator in full:
-- the simple model and its exact check;
-- the full model, step by step;
-- every parameter and measure;
-- the results so far;
-- what the simulation can and cannot show.
-
-Saved results are listed in [sim/results/LOG.md](sim/results/LOG.md).
+The simulator that compares OSO with traditional research now lives in its own repository, [open-science-org/experiment](https://github.com/open-science-org/experiment). It keeps a pinned copy of this repository's ledger, and its tests check that its waterfall pays exactly what `ledger/waterfall.ts` pays. After changing the ledger, refresh that copy there with `npm run sync-ledger`.
 
 ## What is real and what stands in
 

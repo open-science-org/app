@@ -14,11 +14,9 @@
     "test": "node --test",
     "import": "node scripts/import.ts",
     "types": "openapi-typescript contract/openapi.yaml -o contract/types.ts",
-    "check": "tsc -p .",
-    "sim": "node sim/cli.ts"
+    "check": "tsc -p ."
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0"
   },
