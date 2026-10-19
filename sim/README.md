@@ -48,6 +48,8 @@ Where each element of the [specification](https://github.com/open-science-org/OS
 | Research tree, targets, bounties (2.1) | `world` (plugin: `layered`, `chain`, `file`) | `world.ts` |
 | Success oracle and chance p (2.2) | `success.oracle` (plugin: `chance`, `learning`); p from `success` (p0, eta), agent `skill`, specialist boost | `oracles.ts`; `model.ts`, `attempt` |
 | Knowledge, publishing, uptake (2.3) | `rules.visibility` (plugin), agent `reuse` | `rules.ts` (`visibilities`), `model.ts` (`publishBundle`, uptake loop) |
+| Costly and fallible knowledge (2.3) | `knowledge.absorbCost`, `knowledge.errorRate` | `model.ts` (`absorb`, `retract`) |
+| Public failures (2.2) | `rules.publishFailures`, with `success.oracle: learning` | `model.ts` (`attempt`), `oracles.ts` |
 | Rewards: mint, bounty, waterfall, screen (2.4) | `rules.alpha`, `rules.c`, `rules.mint`, `rules.screen`, `attribution.noise` | `world.ts` (`shares`, `attributionValue`), `model.ts` (`publishOne`, `payInto`) |
 | Budget, rounds, allocation (2.5) | `budget` (allocation plugin) | `rules.ts` (`allocations`), `model.ts` (`run`) |
 | One round (2.6) | — | `model.ts`, `run` |
@@ -57,7 +59,7 @@ Where each element of the [specification](https://github.com/open-science-org/OS
 | Measures (5) | `measures.targetLevel`; columns in experiments | `measures.ts` |
 | Experiments and factors (7) | `experiments/*.yaml` | `experiment.ts`, `cli.ts` |
 
-**The one effect of sharing modelled here.** A published result lets other agents attempt what builds on it, after uptake. It carries no statement, method or failed attempts, and it is always correct and free to absorb ([specification, section 2.3](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md#23-knowledge-and-sharing)).
+**The effects of sharing modelled here.** By default, a published result lets other agents attempt what builds on it, after uptake. It carries no statement, method or failed attempts, and it is always correct and free to absorb. Optional mechanics add public failures, a cost to absorb, and wrong results (section 2.6) ([specification, section 2.3](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md#23-knowledge-and-sharing)).
 
 ## 1. The simple model
 
@@ -245,6 +247,32 @@ U = V · ( π − γ · √(π·(1 − π)) )
 - **κ = 1:** how much publishing raises a lemma's expected use.
 - **ψ = 0.5:** the scoop risk, meaning how much publishing raises a rival's chance of winning the target below. This is the parameter the results are most sensitive to.
 
+### 2.6 Optional mechanics
+
+All are off by default; switching them on changes nothing else.
+
+**Learning from failure.** With `success.oracle: { kind: learning, gain, sharedWeight }`, an attempt by agent i on result r succeeds with chance:
+
+  p × (1 + gain × (i's failures on r + sharedWeight × others' public failures on r)), at most `cap`
+
+With `rules.publishFailures: true`, every failed attempt is public. Under traditional rules this is not the default, but it can be set to separate the two effects.
+
+**Costly knowledge.** With `knowledge.absorbCost > 0`, published results are no longer taken up at once and for free:
+- at the start of each round, each agent absorbs the published results it does not know, lowest level first;
+- each is taken up with the agent's reuse chance, and each costs `absorbCost` from that round's compute, while the agent can afford it;
+- what is left funds its attempts.
+
+Spending therefore never exceeds X.
+
+**Wrong results.** With `knowledge.errorRate > 0`:
+- each successful proof is wrong with that chance;
+- a result proved on top of a wrong result is wrong too, and a published wrong result passes its wrongness to every agent that takes it up;
+- lemmas are not checked, so a wrong lemma earns its mint;
+- **targets are checked:** a target proof that is wrong, or rests on a wrong result, is rejected. The wrong results under it are retracted from the agent's knowledge. If a retracted result was published, the publication is withdrawn and everyone who took it up loses it;
+- mints already paid stay, under OIP-11's rule of no clawback.
+
+**The Lean reference tree.** `scenario: lean-tree` uses [worlds/lean-reference.json](worlds/lean-reference.json). It is the Lean problem set's reference tree, with theorem names replaced by anonymous ids: 42 results in areas A, B and C plus cross-area results, the 8 posted targets, and bounty 4 · 2^(depth − 1). [worlds/from-reference-dag.py](worlds/from-reference-dag.py) regenerates it. Success chances follow the default model by level, X = 400 and L\* = 5.
+
 ## 3. Configuration and extending
 
 ### Scenarios
@@ -254,10 +282,11 @@ A **scenario** is one complete setup: the world, the agents, the rules, the budg
 | Section | Settings | Defaults |
 | --- | --- | --- |
 | `world` | A world generator (`kind`) and its parameters | `layered`: 8 levels × 10, ≤ 3 prerequisites, 3 areas, targets at levels 3, 5, 7, 8, bounty 4·2^(ℓ−1) |
-| `success` | Success chance per attempt by level: p = p0 · eta^(level − 1) | p0 = 0.5, eta = 0.6 |
+| `success` | Success chance per attempt by level, p = p0 · eta^(level − 1), and the success oracle | p0 = 0.5, eta = 0.6; oracle `chance` |
 | `attribution` | Noise in the ledger's attribution weights | 0 (exact) |
 | `agents` | Archetypes and their traits, the mix, specialist boost and penalty | 12 agents of six archetypes (section 2.2) |
-| `rules` | α, c, mint, validation screen θ, visibility rule | Traditional: α = 1, c = 0, finished-only, θ = 0.5 |
+| `rules` | α, c, mint, validation screen θ, visibility rule, publishing failures | Traditional: α = 1, c = 0, finished-only, θ = 0.5, failures private |
+| `knowledge` | Cost to absorb a published result; chance a proof is wrong | 0 and 0: free and correct |
 | `budget` | Total compute X, rounds (or attempts per agent per round), stopping, allocation rule | X = 1,200 over 120 rounds; earnings share with ρ = 0.5 |
 | `behaviour` | Choice policy, perception noise, κ, ψ, rounds per level | softmax τ = 0.3, ε = 0.05; κ = 1, ψ = 0.5 |
 | `measures` | Level L\* for speed and cost | 7 |
@@ -355,6 +384,8 @@ Computed at the end of each run (`model.ts`, function `measure`):
 | **sharing** | Share of proved lemmas published in the same round they were first proved |
 | **hoarded** | Share of proved lemmas never published |
 | **gamer share of pay** | Share of all pay that went to the gaming agent |
+| **rejected targets**, **retracted** | Target proofs rejected because they rested on a wrong result; wrong results retracted |
+| **absorb spend** | Share of spend on absorbing others' published results |
 | **trivial spend** | Share of spend on trivial results |
 
 Tables show mean ± standard deviation over seeds. Per-run values, including the frontier at 11 points of spend, are in each experiment's `runs.jsonl`.
@@ -397,6 +428,32 @@ The full grid over scoop risk ψ and cited share c is in [results/alpha-psi](res
 | Strong screen (θ = 0.9) | 5.7 | 8.0 | 2.3 | 0.83 |
 | No gamer | 7.0 | 8.0 | 1.0 | – |
 
+### More complex setups ([lean-tree](results/lean-tree/summary.md), [failures](results/failures/summary.md), [costly-sharing](results/costly-sharing/summary.md), [complex](results/complex/summary.md); 100 seeds)
+
+**The Lean reference tree** (X = 400, L\* = 5):
+
+| Setting | Frontier | Reach L5 | Cost to L5 | Targets solved (of 8) | Sharing |
+| --- | --- | --- | --- | --- | --- |
+| Traditional | 4.4 | 44% | 303 | 4.8 | 0.01 |
+| OSO (immediate) | 7.0 | 100% | 125 | 8.0 | 1.00 |
+| OSO (choice) | 5.2 | 76% | 273 | 6.3 | 0.42 |
+
+**Learning from failure** (default world; gain 0.1). Cost to reach level 7:
+
+| | No learning | Learn from own failures | Learn from public failures |
+| --- | --- | --- | --- |
+| Traditional | 957 | 865 | 810 |
+| OSO (immediate) | 485 | 367 | 284 |
+
+**Costly and fallible sharing** (default world). Frontier, and targets solved, traditional vs. OSO:
+
+| Absorb cost | Error rate | Traditional | OSO |
+| --- | --- | --- | --- |
+| 0 | 0 | 5.7, 4.2 | 7.9, 6.9 |
+| 0 | 0.15 | 4.5, 3.0 | 7.2, 4.9 |
+| 1 | 0 | 5.5, 4.0 | 7.3, 5.4 |
+| 1 | 0.15 | 4.5, 3.0 | 6.6, 3.4 |
+
 ### What the results say
 
 1. **Sharing does most of the work.** Immediate visibility reaches level 7 in every run at about half the cost, with or without flow-back. The simple model shows why: hidden progress makes every agent repeat the same steps. In this model the effect is largely built in (section 6).
@@ -410,14 +467,18 @@ The full grid over scoop risk ψ and cited share c is in [results/alpha-psi](res
 4. **Flow-back makes credit more accurate when work is shared:** 0.57 with flow-back vs. 0.47 without, both with immediate visibility. The traditional setting's 0.95 is the trivial case of one agent proving a whole chain alone.
 5. **Under traditional rules, the gaming agent captures the compute.** Lemmas stay private, so nobody else earns anything until they win a target. Meanwhile the gamer's trivial results earn mint from the first round, so the compute loop hands it the largest budget. It then wins most targets too, and ends with a median of 100% of all pay. Without the gamer, traditional reaches level 7.0 instead of 5.7, and the gap to OSO shrinks from 2.2 levels to 1.0. **So a large part of the default gap comes from one spammer combined with earnings-driven funding,** a real-world pattern, but an assumption here. Present the gap together with this decomposition.
 6. **Without the compute loop (ρ = 0), the gap grows** (4.6 vs. 8.0), because traditional agents can no longer concentrate compute on whoever is ahead.
+7. **The real tree shape favours OSO more.** On the Lean reference tree, OSO solves all 8 targets in every run, at 41% of traditional's cost to depth 5. With agent's choice, agents share more than on random trees (0.42 vs. 0.22 at α = 0.8): the real tree has many shallow results with little scoop risk.
+8. **Public failures help a sharing community most.** Learning from everyone's failures cuts OSO's cost to level 7 by 41% (485 to 284), and traditional's by 15% (957 to 810).
+9. **Costly, fallible sharing narrows OSO's lead.** With both an absorbing cost of 1 and a 15% error rate, OSO still reaches deeper (6.6 vs. 4.5), but solves barely more targets (3.4 vs. 3.0). Errors cause more retractions under OSO (21 vs. 10 at a 15% error rate), because wrong results spread to more agents. This is an argument for checking every result, as Lean does, before others build on it.
+10. **Everything combined on the Lean tree:** OSO stays ahead. Publishing failures stops mattering once absorbing is costly.
 
 ## 6. What this simulation can and cannot show
 
 It is a thought experiment with the arithmetic done exactly. The [specification, section 6](https://github.com/open-science-org/OSO/blob/master/docs/demo-model.md#6-instantiations) compares it element by element with the Lean experiment. Where it departs from real research, starting with the largest gaps:
 
 1. **Agents never invent problems.** Every possible result already exists, and agents see exactly which ones they can attempt. Real research is mostly finding the right question or lemma.
-2. **The benefit of sharing is largely built in.** A published result is instantly usable, always correct and free to understand. "Sharing does most of the work" largely restates that assumption.
-3. **Each attempt is an independent draw.** There is no partial progress and no learning from failure.
+2. **By default, the benefit of sharing is largely built in.** A published result is instantly usable, always correct and free to absorb. The optional costs and errors (section 2.6) test how much of the advantage survives without that, but their sizes are guesses.
+3. **Attempts are independent draws by default.** The learning oracle adds learning from failure in a simple form; there is still no partial progress.
 4. **The agents are formulas.** Their behaviour is the scoring rule in section 2.5. Real scientists and LLM agents may respond to incentives differently.
 5. **The key numbers are guesses.** Bounties, the mint, the traits, and above all the scoop risk ψ were chosen, not measured. Where α\* falls is a property of these assumptions.
 6. **The worlds are random graphs,** not fields with foundational results, fashions or dying lines of work.
@@ -433,6 +494,7 @@ What it is good for:
 | File | Contents |
 | --- | --- |
 | `scenarios/default.yaml` | Every setting with its default, documented |
+| `scenarios/lean-tree.yaml`, `worlds/` | The Lean reference tree as a world, and the script that builds it |
 | `presets.yaml` | The six rule settings by name |
 | `experiments/*.yaml` | The experiments |
 | `config.ts` | Scenario types, loading, merging, dotted paths, validation |

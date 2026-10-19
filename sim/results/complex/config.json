@@ -1,0 +1,374 @@
+{
+  "experiment": "complex",
+  "date": "2026-10-17",
+  "commit": "3b82e1b",
+  "dirty": false,
+  "command": "npm run sim -- complex --seeds 100 --save",
+  "seeds": 100,
+  "overrides": {},
+  "config": {
+    "experiment": {
+      "id": "complex",
+      "title": "All together on the Lean tree: learning, shared failures, costly and fallible sharing",
+      "description": "The Lean reference tree; every agent learns from failure (learning oracle, gain 0.1). Knowledge is either free and always correct, or costly (absorbCost 0.25) and fallible (errorRate 0.05). OSO is run with and without publishing failed attempts.",
+      "seeds": 100,
+      "scenario": "lean-tree",
+      "set": {
+        "success.oracle": {
+          "kind": "learning",
+          "gain": 0.1
+        }
+      },
+      "factors": [
+        {
+          "name": "knowledge",
+          "levels": [
+            {
+              "label": "free and correct"
+            },
+            {
+              "label": "costly and fallible",
+              "set": {
+                "knowledge": {
+                  "absorbCost": 0.25,
+                  "errorRate": 0.05
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "setting",
+          "levels": [
+            {
+              "label": "Traditional",
+              "preset": "traditional"
+            },
+            {
+              "label": "OSO (immediate)",
+              "preset": "oso"
+            },
+            {
+              "label": "OSO + public failures",
+              "preset": "oso",
+              "set": {
+                "rules.publishFailures": true
+              }
+            },
+            {
+              "label": "OSO (choice)",
+              "preset": "osoChoice"
+            }
+          ]
+        }
+      ],
+      "columns": [
+        "frontier",
+        "reachTarget",
+        "speed",
+        "cost",
+        "spend",
+        "targetsSolved",
+        "absorbSpend",
+        "rejected",
+        "retracted",
+        "sharing",
+        "credit"
+      ]
+    },
+    "base": {
+      "world": {
+        "kind": "file",
+        "path": "worlds/lean-reference.json",
+        "areas": 4
+      },
+      "success": {
+        "p0": 0.5,
+        "eta": 0.6,
+        "oracle": {
+          "kind": "learning",
+          "gain": 0.1
+        }
+      },
+      "attribution": {
+        "noise": 0
+      },
+      "agents": {
+        "archetypes": {
+          "plain": {
+            "skill": 1,
+            "conjecture": 1,
+            "cost": 1,
+            "horizon": 1,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "foundation": {
+            "skill": 1,
+            "conjecture": 0.7,
+            "cost": 1,
+            "horizon": 0.98,
+            "risk": 0.2,
+            "reuse": 0.9,
+            "sharing": 0.5,
+            "gaming": 0,
+            "specialist": false
+          },
+          "racer": {
+            "skill": 1,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.85,
+            "risk": -0.2,
+            "reuse": 0.6,
+            "sharing": 0,
+            "gaming": 0,
+            "specialist": false
+          },
+          "explorer": {
+            "skill": 0.5,
+            "conjecture": 0.3,
+            "cost": 0.3,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": false
+          },
+          "specialist": {
+            "skill": 1,
+            "conjecture": 0.6,
+            "cost": 1,
+            "horizon": 0.95,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0.2,
+            "gaming": 0,
+            "specialist": true
+          },
+          "freeRider": {
+            "skill": 0.8,
+            "conjecture": 0.5,
+            "cost": 1,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 1,
+            "sharing": -1,
+            "gaming": 0,
+            "specialist": false
+          },
+          "gamer": {
+            "skill": 0.8,
+            "conjecture": 0.3,
+            "cost": 0.5,
+            "horizon": 0.9,
+            "risk": 0,
+            "reuse": 0.8,
+            "sharing": 0,
+            "gaming": 0.6,
+            "specialist": false
+          }
+        },
+        "mix": {
+          "foundation": 3,
+          "racer": 3,
+          "explorer": 2,
+          "specialist": 2,
+          "freeRider": 1,
+          "gamer": 1
+        },
+        "specialist": {
+          "boost": 1.6,
+          "penalty": 0.4
+        },
+        "deciders": {}
+      },
+      "rules": {
+        "alpha": 1,
+        "c": 0,
+        "mint": 1,
+        "screen": 0.5,
+        "publishFailures": false,
+        "visibility": {
+          "kind": "finished-only"
+        }
+      },
+      "knowledge": {
+        "absorbCost": 0,
+        "errorRate": 0
+      },
+      "budget": {
+        "X": 400,
+        "rounds": 40,
+        "perAgentPerRound": null,
+        "stopWhenSolved": true,
+        "allocation": {
+          "kind": "earnings-share",
+          "rho": 0.5,
+          "smoothing": 0.7
+        }
+      },
+      "behaviour": {
+        "decider": {
+          "kind": "formula"
+        },
+        "policy": {
+          "kind": "softmax",
+          "tau": 0.3,
+          "epsilon": 0.05
+        },
+        "perceptionNoise": 1,
+        "kappa": 1,
+        "psi": 0.5,
+        "roundsPerLevel": 5
+      },
+      "measures": {
+        "targetLevel": 5
+      }
+    },
+    "rows": [
+      {
+        "labels": {
+          "knowledge": "free and correct",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "free and correct",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "free and correct",
+          "setting": "OSO + public failures"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            },
+            "publishFailures": true
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "free and correct",
+          "setting": "OSO (choice)"
+        },
+        "overrides": {
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "choice"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "costly and fallible",
+          "setting": "Traditional"
+        },
+        "overrides": {
+          "knowledge": {
+            "absorbCost": 0.25,
+            "errorRate": 0.05
+          },
+          "rules": {
+            "alpha": 1,
+            "c": 0,
+            "visibility": {
+              "kind": "finished-only"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "costly and fallible",
+          "setting": "OSO (immediate)"
+        },
+        "overrides": {
+          "knowledge": {
+            "absorbCost": 0.25,
+            "errorRate": 0.05
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            }
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "costly and fallible",
+          "setting": "OSO + public failures"
+        },
+        "overrides": {
+          "knowledge": {
+            "absorbCost": 0.25,
+            "errorRate": 0.05
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "immediate"
+            },
+            "publishFailures": true
+          }
+        }
+      },
+      {
+        "labels": {
+          "knowledge": "costly and fallible",
+          "setting": "OSO (choice)"
+        },
+        "overrides": {
+          "knowledge": {
+            "absorbCost": 0.25,
+            "errorRate": 0.05
+          },
+          "rules": {
+            "alpha": 0.8,
+            "c": 0.15,
+            "visibility": {
+              "kind": "choice"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
