@@ -1,0 +1,22 @@
+id: abstract-field
+title: An abstract research field
+summary: A generic field of 80 results in 8 levels and 3 areas, with 7 prizes; the simulator's
+  default world.
+description: "A research field with no particular subject. Results build on results in eight levels
+  of rising difficulty, across three loosely connected areas. Seven targets carry prizes that double
+  with each level, and about a third of all results are dead ends that lead to no target. Twelve
+  agents of six kinds work in it: patient foundation builders, target racers, cheap explorers,
+  specialists, a free rider and a gamer who farms trivial results."
+glossary:
+  result: a finding that later findings can build on
+  target: a prize-carrying finding announced in advance
+  attempt: one try at proving a finding, which succeeds or fails
+  area: a subfield
+areas:
+  - area 1
+  - area 2
+  - area 3
+scenario:
+  budget:
+    X: 1200
+source: written by hand; the default scenario

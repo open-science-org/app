@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="viz" viewBox="0 0 760 420" width="760" height="420" role="img" aria-label="How far each community got for the money: A solid-state battery">
+<style>
+  .viz { --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --grid: #e6e5e1;
+         --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --dead: #c9c7c0; }
+  @media (prefers-color-scheme: dark) {
+    .viz { --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --grid: #34332f;
+           --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --dead: #4a4945; }
+  }
+  .bg { fill: var(--surface); }
+  text { fill: var(--ink); font-family: Helvetica, Arial, sans-serif; }
+  .title { font-size: 16px; font-weight: 700; }
+  .sub, .tick, .axis { fill: var(--ink-2); font-size: 12px; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--ink-2); stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .c1 { stroke: var(--s1); } .f1 { fill: var(--s1); }
+  .c2 { stroke: var(--s2); } .f2 { fill: var(--s2); }
+  .c3 { stroke: var(--s3); } .f3 { fill: var(--s3); }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+  .label { font-size: 12px; font-weight: 700; }
+</style><rect class="bg" width="760" height="420" rx="8"/>
+<text class="title" x="64" y="30">How far each community got for the money: A solid-state battery</text>
+<text class="sub" x="64" y="50">Mean hardest level published, by compute spent (100 runs per setting). Higher is better.</text>
+<line class="line c1" x1="64" y1="70" x2="82" y2="70"/><text class="tick" x="88" y="74">OSO (immediate)</text>
+<line class="line c2" x1="197" y1="70" x2="215" y2="70"/><text class="tick" x="221" y="74">Traditional</text>
+<line class="line c3" x1="303.6" y1="70" x2="321.6" y2="70"/><text class="tick" x="327.6" y="74">OSO (choice)</text>
+<line class="grid" x1="64" x2="570" y1="364" y2="364"/>
+<text class="tick" x="56" y="368" text-anchor="end">0</text>
+<line class="grid" x1="64" x2="570" y1="309.6" y2="309.6"/>
+<text class="tick" x="56" y="313.6" text-anchor="end">1</text>
+<line class="grid" x1="64" x2="570" y1="255.2" y2="255.2"/>
+<text class="tick" x="56" y="259.2" text-anchor="end">2</text>
+<line class="grid" x1="64" x2="570" y1="200.8" y2="200.8"/>
+<text class="tick" x="56" y="204.8" text-anchor="end">3</text>
+<line class="grid" x1="64" x2="570" y1="146.39999999999998" y2="146.39999999999998"/>
+<text class="tick" x="56" y="150.39999999999998" text-anchor="end">4</text>
+<line class="grid" x1="64" x2="570" y1="92" y2="92"/>
+<text class="tick" x="56" y="96" text-anchor="end">5</text>
+<line class="base" x1="64" x2="570" y1="364" y2="364"/>
+<text class="tick" x="64" y="382" text-anchor="middle">0</text>
+<text class="tick" x="190.5" y="382" text-anchor="middle">60</text>
+<text class="tick" x="317" y="382" text-anchor="middle">120</text>
+<text class="tick" x="443.5" y="382" text-anchor="middle">180</text>
+<text class="tick" x="570" y="382" text-anchor="middle">240</text>
+<text class="axis" x="317" y="408" text-anchor="middle">Compute spent</text>
+<text class="axis" transform="translate(16 228) rotate(-90)" text-anchor="middle">Hardest level published</text>
+<path class="line c1" d="M64.0 364.0 L76.7 364.0 L89.3 264.4 L101.9 264.4 L114.6 243.8 L127.3 243.8 L139.9 214.9 L152.6 214.9 L165.2 193.2 L177.9 193.2 L190.5 173.1 L203.2 171.4 L215.8 165.4 L228.5 165.4 L241.1 154.0 L253.8 153.5 L266.4 146.4 L279.0 146.4 L291.7 134.4 L304.4 134.4 L317.0 130.1 L329.7 130.1 L342.3 120.8 L354.9 120.3 L367.6 117.0 L380.3 117.0 L392.9 108.3 L405.6 108.3 L418.2 105.1 L430.8 105.1 L443.5 100.7 L456.2 100.7 L468.8 99.1 L481.4 99.1 L494.1 98.0 L506.8 97.4 L519.4 96.9 L532.0 96.9 L544.7 95.3 L557.3 95.3 L570.0 94.7"/>
+<circle class="dot f1" cx="570.0" cy="94.7" r="4.5"><title>OSO (immediate): 5 at compute spent 240</title></circle>
+<path class="line c2" d="M64.0 364.0 L76.7 364.0 L89.3 364.0 L101.9 364.0 L114.6 364.0 L127.3 364.0 L139.9 364.0 L152.6 364.0 L165.2 364.0 L177.9 364.0 L190.5 364.0 L203.2 364.0 L215.8 364.0 L228.5 364.0 L241.1 364.0 L253.8 364.0 L266.4 364.0 L279.0 364.0 L291.7 361.8 L304.4 361.8 L317.0 359.6 L329.7 359.6 L342.3 346.6 L354.9 346.6 L367.6 335.7 L380.3 335.7 L392.9 327.0 L405.6 327.0 L418.2 320.5 L430.8 320.5 L443.5 320.5 L456.2 320.5 L468.8 309.6 L481.4 309.6 L494.1 304.7 L506.8 304.7 L519.4 277.5 L532.0 277.5 L544.7 263.9 L557.3 263.9 L570.0 252.5"/>
+<circle class="dot f2" cx="570.0" cy="252.5" r="4.5"><title>Traditional: 2 at compute spent 240</title></circle>
+<path class="line c3" d="M64.0 364.0 L76.7 364.0 L89.3 349.9 L101.9 349.9 L114.6 342.2 L127.3 342.2 L139.9 328.6 L152.6 328.6 L165.2 315.6 L177.9 315.6 L190.5 310.7 L203.2 310.7 L215.8 304.2 L228.5 304.2 L241.1 296.5 L253.8 296.5 L266.4 284.6 L279.0 284.6 L291.7 277.5 L304.4 277.5 L317.0 267.2 L329.7 267.2 L342.3 261.2 L354.9 261.2 L367.6 252.5 L380.3 252.5 L392.9 234.0 L405.6 234.0 L418.2 224.2 L430.8 224.2 L443.5 209.0 L456.2 209.0 L468.8 198.6 L481.4 198.6 L494.1 189.4 L506.8 189.4 L519.4 182.8 L532.0 182.8 L544.7 178.0 L557.3 178.0 L570.0 169.8"/>
+<circle class="dot f3" cx="570.0" cy="169.8" r="4.5"><title>OSO (choice): 3.6 at compute spent 240</title></circle>
+<text class="label" x="582" y="98.72000000000003">OSO (immediate): 5</text>
+<text class="label" x="582" y="173.792">OSO (choice): 3.6</text>
+<text class="label" x="582" y="256.48">Traditional: 2</text>
+</svg>

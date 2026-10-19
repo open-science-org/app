@@ -1,0 +1,22 @@
+id: lean-problem-set
+title: The Lean problem set
+summary: The shape of the OSO Lean problem set; 42 theorems in three areas, 8 posted targets.
+description: "The reference tree of the Lean problem set: a number sequence (area A), sorting (area
+  B) and 2 × 2 integer matrices (area C), plus results that join areas. Each result is a theorem; a
+  theorem can be attempted once the theorems its proof uses are known. The eight posted targets
+  carry bounties that double with depth. Area A is a long chain, area B is wide, and area C is
+  shallow. Success chances follow the default model by level until the Lean pilot measures them."
+glossary:
+  result: a theorem, with its proof
+  target: a posted theorem with a bounty
+  attempt: one try at writing a proof that Lean accepts
+  area: a mathematical topic
+areas:
+  - A sequence
+  - B sorting
+  - C matrices
+  - across areas
+scenarioFile: lean-tree
+notes: Theorem names are hidden; the tree is the route of our own reference proofs, and agents may
+  find others.
+source: written by hand from the Lean problem set's reference proofs

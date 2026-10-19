@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="viz" viewBox="0 0 951.4285714285716 696" width="951.4285714285716" height="696" role="img" aria-label="The research tree: The Lean problem set">
+<style>
+  .viz { --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --grid: #e6e5e1;
+         --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --dead: #c9c7c0; }
+  @media (prefers-color-scheme: dark) {
+    .viz { --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --grid: #34332f;
+           --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --dead: #4a4945; }
+  }
+  .bg { fill: var(--surface); }
+  text { fill: var(--ink); font-family: Helvetica, Arial, sans-serif; }
+  .title { font-size: 16px; font-weight: 700; }
+  .sub, .tick, .axis { fill: var(--ink-2); font-size: 12px; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .base { stroke: var(--ink-2); stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .c1 { stroke: var(--s1); } .f1 { fill: var(--s1); }
+  .c2 { stroke: var(--s2); } .f2 { fill: var(--s2); }
+  .c3 { stroke: var(--s3); } .f3 { fill: var(--s3); }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+  .label { font-size: 12px; font-weight: 700; }
+</style><rect class="bg" width="951.4285714285716" height="696" rx="8"/>
+<text class="title" x="20" y="30">The research tree: The Lean problem set</text>
+<text class="sub" x="20" y="50">42 results · 8 targets · 6 dead ends · columns are levels (deeper to the right); lines join a result to what it builds on</text>
+<text class="tick" x="70" y="70" text-anchor="middle">level 1</text>
+<text class="tick" x="70" y="84" text-anchor="middle">p ≈ 50.0%</text>
+<text class="tick" x="198.57142857142858" y="70" text-anchor="middle">level 2</text>
+<text class="tick" x="198.57142857142858" y="84" text-anchor="middle">p ≈ 30.0%</text>
+<text class="tick" x="327.14285714285717" y="70" text-anchor="middle">level 3</text>
+<text class="tick" x="327.14285714285717" y="84" text-anchor="middle">p ≈ 18.0%</text>
+<text class="tick" x="455.7142857142858" y="70" text-anchor="middle">level 4</text>
+<text class="tick" x="455.7142857142858" y="84" text-anchor="middle">p ≈ 10.8%</text>
+<text class="tick" x="584.2857142857143" y="70" text-anchor="middle">level 5</text>
+<text class="tick" x="584.2857142857143" y="84" text-anchor="middle">p ≈ 6.5%</text>
+<text class="tick" x="712.8571428571429" y="70" text-anchor="middle">level 6</text>
+<text class="tick" x="712.8571428571429" y="84" text-anchor="middle">p ≈ 3.9%</text>
+<text class="tick" x="841.4285714285716" y="70" text-anchor="middle">level 7</text>
+<text class="tick" x="841.4285714285716" y="84" text-anchor="middle">p ≈ 2.3%</text>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="96" x2="198.57142857142858" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="148" x2="198.57142857142858" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="226" x2="198.57142857142858" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="330" x2="198.57142857142858" y2="174"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="356" x2="198.57142857142858" y2="200"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="278" x2="198.57142857142858" y2="226"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="434" x2="198.57142857142858" y2="252"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="460" x2="198.57142857142858" y2="252"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="486" x2="198.57142857142858" y2="278"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="512" x2="198.57142857142858" y2="278"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="122" x2="198.57142857142858" y2="304"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="122" x2="327.14285714285717" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="382" x2="327.14285714285717" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="174" x2="327.14285714285717" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="200" x2="327.14285714285717" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="252" x2="327.14285714285717" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="200" x2="327.14285714285717" y2="148"/>
+<line class="grid" style="stroke:var(--grid);stroke-opacity:1" x1="70" y1="382" x2="327.14285714285717" y2="174"/>
+<line class="grid" style="stroke:var(--grid);stroke-opacity:1" x1="198.57142857142858" y1="226" x2="327.14285714285717" y2="174"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="278" x2="327.14285714285717" y2="200"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="590" x2="327.14285714285717" y2="226"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="252" x2="327.14285714285717" y2="226"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="327.14285714285717" y1="96" x2="455.7142857142858" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="327.14285714285717" y1="122" x2="455.7142857142858" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="96" x2="584.2857142857143" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="327.14285714285717" y1="96" x2="584.2857142857143" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="455.7142857142858" y1="96" x2="584.2857142857143" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="382" x2="584.2857142857143" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="148" x2="584.2857142857143" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="226" x2="584.2857142857143" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="327.14285714285717" y1="148" x2="584.2857142857143" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="455.7142857142858" y1="122" x2="584.2857142857143" y2="122"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="70" y1="382" x2="584.2857142857143" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="148" x2="584.2857142857143" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="226" x2="584.2857142857143" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="198.57142857142858" y1="304" x2="584.2857142857143" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="455.7142857142858" y1="122" x2="584.2857142857143" y2="148"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="584.2857142857143" y1="96" x2="712.8571428571429" y2="96"/>
+<line class="grid" style="stroke:var(--ink-2);stroke-opacity:0.45" x1="712.8571428571429" y1="96" x2="841.4285714285716" y2="96"/>
+<circle cx="70" cy="96" r="6" style="fill:var(--s1)"><title>A-01 · level 1 · A sequence</title></circle>
+<circle cx="70" cy="122" r="6" style="fill:var(--s1)"><title>A-02 · level 1 · A sequence</title></circle>
+<circle cx="70" cy="148" r="6" style="fill:var(--s1)"><title>A-03 · level 1 · A sequence</title></circle>
+<circle cx="70" cy="174" r="6" style="fill:var(--dead)"><title>A-04 · level 1 · A sequence · dead end</title></circle>
+<circle cx="70" cy="200" r="6" style="fill:var(--s2)"><title>B-01 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="226" r="6" style="fill:var(--s2)"><title>B-02 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="252" r="6" style="fill:var(--s2)"><title>B-03 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="278" r="6" style="fill:var(--s2)"><title>B-04 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="304" r="6" style="fill:var(--dead)"><title>B-05 · level 1 · B sorting · dead end</title></circle>
+<circle cx="70" cy="330" r="6" style="fill:var(--s2)"><title>B-06 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="356" r="6" style="fill:var(--s2)"><title>B-07 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="382" r="6" style="fill:var(--s2)"><title>B-08 · level 1 · B sorting</title></circle>
+<circle cx="70" cy="408" r="6" style="fill:var(--dead)"><title>C-01 · level 1 · C matrices · dead end</title></circle>
+<polygon points="70.0,423.0 72.9,430.0 80.5,430.6 74.7,435.5 76.5,442.9 70.0,438.9 63.5,442.9 65.3,435.5 59.5,430.6 67.1,430.0" style="fill:var(--s3);stroke:var(--ink);stroke-width:1.2"><title>C3 · level 1 · C matrices · target, bounty 4</title></polygon>
+<text class="tick" x="70" y="458" text-anchor="middle">4</text>
+<circle cx="70" cy="460" r="6" style="fill:var(--s3)"><title>C-02 · level 1 · C matrices</title></circle>
+<circle cx="70" cy="486" r="6" style="fill:var(--s3)"><title>C-03 · level 1 · C matrices</title></circle>
+<circle cx="70" cy="512" r="6" style="fill:var(--s3)"><title>C-04 · level 1 · C matrices</title></circle>
+<circle cx="70" cy="538" r="6" style="fill:var(--dead)"><title>C-05 · level 1 · C matrices · dead end</title></circle>
+<circle cx="70" cy="564" r="6" style="fill:var(--dead)"><title>C-06 · level 1 · C matrices · dead end</title></circle>
+<circle cx="70" cy="590" r="6" style="fill:var(--s4)"><title>X-01 · level 1 · across areas</title></circle>
+<polygon points="198.6,85.0 201.5,92.0 209.0,92.6 203.3,97.5 205.0,104.9 198.6,101.0 192.1,104.9 193.9,97.5 188.1,92.6 195.7,92.0" style="fill:var(--s1);stroke:var(--ink);stroke-width:1.2"><title>A3 · level 2 · A sequence · target, bounty 8</title></polygon>
+<text class="tick" x="198.57142857142858" y="120" text-anchor="middle">8</text>
+<circle cx="198.57142857142858" cy="122" r="6" style="fill:var(--s1)"><title>A-05 · level 2 · A sequence</title></circle>
+<circle cx="198.57142857142858" cy="148" r="6" style="fill:var(--s2)"><title>B-09 · level 2 · B sorting</title></circle>
+<circle cx="198.57142857142858" cy="174" r="6" style="fill:var(--s2)"><title>B-10 · level 2 · B sorting</title></circle>
+<circle cx="198.57142857142858" cy="200" r="6" style="fill:var(--s2)"><title>B-11 · level 2 · B sorting</title></circle>
+<circle cx="198.57142857142858" cy="226" r="6" style="fill:var(--s2)"><title>B-12 · level 2 · B sorting</title></circle>
+<circle cx="198.57142857142858" cy="252" r="6" style="fill:var(--s3)"><title>C-07 · level 2 · C matrices</title></circle>
+<circle cx="198.57142857142858" cy="278" r="6" style="fill:var(--s3)"><title>C-08 · level 2 · C matrices</title></circle>
+<circle cx="198.57142857142858" cy="304" r="6" style="fill:var(--s4)"><title>X-02 · level 2 · across areas</title></circle>
+<circle cx="327.14285714285717" cy="96" r="6" style="fill:var(--s1)"><title>A-06 · level 3 · A sequence</title></circle>
+<circle cx="327.14285714285717" cy="122" r="6" style="fill:var(--s2)"><title>B-13 · level 3 · B sorting</title></circle>
+<circle cx="327.14285714285717" cy="148" r="6" style="fill:var(--s2)"><title>B-14 · level 3 · B sorting</title></circle>
+<circle cx="327.14285714285717" cy="174" r="6" style="fill:var(--dead)"><title>B-15 · level 3 · B sorting · dead end</title></circle>
+<polygon points="327.1,189.0 330.1,196.0 337.6,196.6 331.9,201.5 333.6,208.9 327.1,204.9 320.7,208.9 322.4,201.5 316.7,196.6 324.2,196.0" style="fill:var(--s3);stroke:var(--ink);stroke-width:1.2"><title>C4 · level 3 · C matrices · target, bounty 16</title></polygon>
+<text class="tick" x="327.14285714285717" y="224" text-anchor="middle">16</text>
+<polygon points="327.1,215.0 330.1,222.0 337.6,222.6 331.9,227.5 333.6,234.9 327.1,230.9 320.7,234.9 322.4,227.5 316.7,222.6 324.2,222.0" style="fill:var(--s4);stroke:var(--ink);stroke-width:1.2"><title>X1 · level 3 · across areas · target, bounty 16</title></polygon>
+<text class="tick" x="327.14285714285717" y="250" text-anchor="middle">16</text>
+<circle cx="455.7142857142858" cy="96" r="6" style="fill:var(--s1)"><title>A-07 · level 4 · A sequence</title></circle>
+<polygon points="455.7,111.0 458.6,118.0 466.2,118.6 460.4,123.5 462.2,130.9 455.7,127.0 449.2,130.9 451.0,123.5 445.3,118.6 452.8,118.0" style="fill:var(--s2);stroke:var(--ink);stroke-width:1.2"><title>B3 · level 4 · B sorting · target, bounty 32</title></polygon>
+<text class="tick" x="455.7142857142858" y="146" text-anchor="middle">32</text>
+<circle cx="584.2857142857143" cy="96" r="6" style="fill:var(--s1)"><title>A-08 · level 5 · A sequence</title></circle>
+<polygon points="584.3,111.0 587.2,118.0 594.7,118.6 589.0,123.5 590.8,130.9 584.3,127.0 577.8,130.9 579.6,123.5 573.8,118.6 581.4,118.0" style="fill:var(--s2);stroke:var(--ink);stroke-width:1.2"><title>B5 · level 5 · B sorting · target, bounty 64</title></polygon>
+<text class="tick" x="584.2857142857143" y="146" text-anchor="middle">64</text>
+<polygon points="584.3,137.0 587.2,144.0 594.7,144.6 589.0,149.5 590.8,156.9 584.3,152.9 577.8,156.9 579.6,149.5 573.8,144.6 581.4,144.0" style="fill:var(--s4);stroke:var(--ink);stroke-width:1.2"><title>X2 · level 5 · across areas · target, bounty 64</title></polygon>
+<text class="tick" x="584.2857142857143" y="172" text-anchor="middle">64</text>
+<circle cx="712.8571428571429" cy="96" r="6" style="fill:var(--s1)"><title>A-09 · level 6 · A sequence</title></circle>
+<polygon points="841.4,85.0 844.3,92.0 851.9,92.6 846.1,97.5 847.9,104.9 841.4,101.0 835.0,104.9 836.7,97.5 831.0,92.6 838.5,92.0" style="fill:var(--s1);stroke:var(--ink);stroke-width:1.2"><title>A5 · level 7 · A sequence · target, bounty 256</title></polygon>
+<text class="tick" x="841.4285714285716" y="120" text-anchor="middle">256</text>
+<circle cx="26" cy="666" r="6" style="fill:var(--s1)"/><text class="tick" x="36" y="670">A sequence</text>
+<circle cx="126" cy="666" r="6" style="fill:var(--s2)"/><text class="tick" x="136" y="670">B sorting</text>
+<circle cx="219.4" cy="666" r="6" style="fill:var(--s3)"/><text class="tick" x="229.4" y="670">C matrices</text>
+<circle cx="319.4" cy="666" r="6" style="fill:var(--s4)"/><text class="tick" x="329.4" y="670">across areas</text>
+<circle cx="432.59999999999997" cy="666" r="6" style="fill:var(--dead)"/><text class="tick" x="442.59999999999997" y="670">dead end</text>
+<text class="tick" x="516.5999999999999" y="670">★ target (number = bounty)</text>
+</svg>

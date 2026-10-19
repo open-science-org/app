@@ -1,0 +1,722 @@
+{
+ "headline": {
+  "id": "lean-problem-set",
+  "title": "The Lean problem set",
+  "summary": "The shape of the OSO Lean problem set; 42 theorems in three areas, 8 posted targets.",
+  "verdict": "OSO ahead",
+  "maxLevel": 7,
+  "targetLevel": 5,
+  "targets": 8,
+  "budget": 400,
+  "traditional": {
+   "frontier": 4.36,
+   "reach": 0.44,
+   "cost": 302.7477272727278,
+   "targetsSolved": 4.79
+  },
+  "oso": {
+   "frontier": 7,
+   "reach": 1,
+   "cost": 125.12099999999992,
+   "targetsSolved": 8
+  },
+  "osoChoice": {
+   "frontier": 5.23,
+   "sharing": 0.42290003058812753
+  },
+  "alphaStar": 0.6,
+  "robustness": [
+   {
+    "condition": "free and correct",
+    "osoLead": 2.6399999999999997
+   },
+   {
+    "condition": "costly to absorb",
+    "osoLead": 2.17
+   },
+   {
+    "condition": "sometimes wrong",
+    "osoLead": 2.51
+   },
+   {
+    "condition": "costly and sometimes wrong",
+    "osoLead": 2.2100000000000004
+   }
+  ],
+  "seeds": 100,
+  "commit": "bf5a855",
+  "date": "2026-10-19"
+ },
+ "settings": [
+  {
+   "setting": "Traditional",
+   "frontier": "4.4 ± 1.2",
+   "reach L5": "0.44",
+   "speed": "31 ± 7",
+   "cost": "303 ± 66",
+   "spend": "394 ± 14",
+   "targets solved": "4.8 ± 1.5",
+   "waste": "0.53 ± 0.10",
+   "credit": "0.98 ± 0.04",
+   "sharing": "0.01 ± 0.02"
+  },
+  {
+   "setting": "OSO (immediate)",
+   "frontier": "7.0 ± 0.0",
+   "reach L5": "1.00",
+   "speed": "13 ± 3",
+   "cost": "125 ± 32",
+   "spend": "243 ± 59",
+   "targets solved": "8.0 ± 0.0",
+   "waste": "0.78 ± 0.05",
+   "credit": "0.73 ± 0.06",
+   "sharing": "1.00 ± 0.00"
+  },
+  {
+   "setting": "Flow-back, finished-only",
+   "frontier": "4.3 ± 1.1",
+   "reach L5": "0.48",
+   "speed": "33 ± 6",
+   "cost": "327 ± 64",
+   "spend": "392 ± 19",
+   "targets solved": "4.9 ± 1.7",
+   "waste": "0.55 ± 0.11",
+   "credit": "0.99 ± 0.03",
+   "sharing": "0.01 ± 0.02"
+  },
+  {
+   "setting": "No flow-back, immediate",
+   "frontier": "7.0 ± 0.1",
+   "reach L5": "1.00",
+   "speed": "14 ± 4",
+   "cost": "131 ± 39",
+   "spend": "246 ± 63",
+   "targets solved": "8.0 ± 0.1",
+   "waste": "0.77 ± 0.06",
+   "credit": "0.59 ± 0.08",
+   "sharing": "1.00 ± 0.00"
+  },
+  {
+   "setting": "No flow-back, choice",
+   "frontier": "4.9 ± 1.2",
+   "reach L5": "0.67",
+   "speed": "31 ± 7",
+   "cost": "301 ± 74",
+   "spend": "386 ± 33",
+   "targets solved": "5.9 ± 1.4",
+   "waste": "0.59 ± 0.13",
+   "credit": "0.84 ± 0.09",
+   "sharing": "0.35 ± 0.05"
+  },
+  {
+   "setting": "OSO (choice)",
+   "frontier": "5.2 ± 1.2",
+   "reach L5": "0.76",
+   "speed": "28 ± 8",
+   "cost": "273 ± 77",
+   "spend": "372 ± 54",
+   "targets solved": "6.3 ± 1.3",
+   "waste": "0.62 ± 0.13",
+   "credit": "0.84 ± 0.08",
+   "sharing": "0.42 ± 0.06"
+  }
+ ],
+ "alpha": [
+  {
+   "α": 1,
+   "intermediate results shared": "35%",
+   "frontier": "4.9",
+   "reach level 5": "67%",
+   "targets solved": "5.9"
+  },
+  {
+   "α": 0.8,
+   "intermediate results shared": "42%",
+   "frontier": "5.2",
+   "reach level 5": "76%",
+   "targets solved": "6.3"
+  },
+  {
+   "α": 0.6,
+   "intermediate results shared": "57%",
+   "frontier": "5.9",
+   "reach level 5": "92%",
+   "targets solved": "7.0"
+  },
+  {
+   "α": 0.5,
+   "intermediate results shared": "68%",
+   "frontier": "6.5",
+   "reach level 5": "99%",
+   "targets solved": "7.5"
+  },
+  {
+   "α": 0.4,
+   "intermediate results shared": "80%",
+   "frontier": "6.9",
+   "reach level 5": "100%",
+   "targets solved": "7.9"
+  },
+  {
+   "α": 0.3,
+   "intermediate results shared": "87%",
+   "frontier": "6.9",
+   "reach level 5": "99%",
+   "targets solved": "7.9"
+  },
+  {
+   "α": 0.2,
+   "intermediate results shared": "92%",
+   "frontier": "7.0",
+   "reach level 5": "100%",
+   "targets solved": "8.0"
+  },
+  {
+   "α": 0.1,
+   "intermediate results shared": "95%",
+   "frontier": "7.0",
+   "reach level 5": "100%",
+   "targets solved": "8.0"
+  }
+ ],
+ "robustness": [
+  {
+   "shared knowledge": "free and correct",
+   "traditional frontier": "4.4",
+   "OSO frontier": "7.0",
+   "OSO lead": "+2.6",
+   "traditional targets": "4.8",
+   "OSO targets": "8.0"
+  },
+  {
+   "shared knowledge": "costly to absorb",
+   "traditional frontier": "4.2",
+   "OSO frontier": "6.4",
+   "OSO lead": "+2.2",
+   "traditional targets": "4.7",
+   "OSO targets": "7.0"
+  },
+  {
+   "shared knowledge": "sometimes wrong",
+   "traditional frontier": "4.1",
+   "OSO frontier": "6.6",
+   "OSO lead": "+2.5",
+   "traditional targets": "4.3",
+   "OSO targets": "7.6"
+  },
+  {
+   "shared knowledge": "costly and sometimes wrong",
+   "traditional frontier": "3.7",
+   "OSO frontier": "5.9",
+   "OSO lead": "+2.2",
+   "traditional targets": "3.8",
+   "OSO targets": "6.3"
+  }
+ ],
+ "curves": {
+  "Traditional": [
+   [
+    0,
+    0
+   ],
+   [
+    10,
+    0.02
+   ],
+   [
+    20,
+    0.37
+   ],
+   [
+    30,
+    0.64
+   ],
+   [
+    40,
+    0.73
+   ],
+   [
+    50,
+    0.84
+   ],
+   [
+    60,
+    0.95
+   ],
+   [
+    70,
+    1.06
+   ],
+   [
+    80,
+    1.23
+   ],
+   [
+    90,
+    1.45
+   ],
+   [
+    100,
+    1.56
+   ],
+   [
+    110,
+    1.72
+   ],
+   [
+    120,
+    1.83
+   ],
+   [
+    130,
+    1.85
+   ],
+   [
+    140,
+    1.95
+   ],
+   [
+    150,
+    2.04
+   ],
+   [
+    160,
+    2.25
+   ],
+   [
+    170,
+    2.37
+   ],
+   [
+    180,
+    2.53
+   ],
+   [
+    190,
+    2.62
+   ],
+   [
+    200,
+    2.71
+   ],
+   [
+    210,
+    2.87
+   ],
+   [
+    220,
+    2.93
+   ],
+   [
+    230,
+    3.04
+   ],
+   [
+    240,
+    3.16
+   ],
+   [
+    250,
+    3.24
+   ],
+   [
+    260,
+    3.3
+   ],
+   [
+    270,
+    3.38
+   ],
+   [
+    280,
+    3.38
+   ],
+   [
+    290,
+    3.41
+   ],
+   [
+    300,
+    3.57
+   ],
+   [
+    310,
+    3.65
+   ],
+   [
+    320,
+    3.7
+   ],
+   [
+    330,
+    3.77
+   ],
+   [
+    340,
+    3.9
+   ],
+   [
+    350,
+    3.93
+   ],
+   [
+    360,
+    4.06
+   ],
+   [
+    370,
+    4.09
+   ],
+   [
+    380,
+    4.17
+   ],
+   [
+    390,
+    4.32
+   ],
+   [
+    400,
+    4.36
+   ]
+  ],
+  "OSO (immediate)": [
+   [
+    0,
+    0
+   ],
+   [
+    10,
+    0.66
+   ],
+   [
+    20,
+    1.87
+   ],
+   [
+    30,
+    2.13
+   ],
+   [
+    40,
+    2.4
+   ],
+   [
+    50,
+    2.54
+   ],
+   [
+    60,
+    2.77
+   ],
+   [
+    70,
+    3.1
+   ],
+   [
+    80,
+    3.37
+   ],
+   [
+    90,
+    3.77
+   ],
+   [
+    100,
+    3.94
+   ],
+   [
+    110,
+    4.15
+   ],
+   [
+    120,
+    4.42
+   ],
+   [
+    130,
+    4.64
+   ],
+   [
+    140,
+    4.9
+   ],
+   [
+    150,
+    5.1
+   ],
+   [
+    160,
+    5.28
+   ],
+   [
+    170,
+    5.47
+   ],
+   [
+    180,
+    5.67
+   ],
+   [
+    190,
+    5.86
+   ],
+   [
+    200,
+    6.05
+   ],
+   [
+    210,
+    6.24
+   ],
+   [
+    220,
+    6.29
+   ],
+   [
+    230,
+    6.38
+   ],
+   [
+    240,
+    6.48
+   ],
+   [
+    250,
+    6.58
+   ],
+   [
+    260,
+    6.62
+   ],
+   [
+    270,
+    6.7
+   ],
+   [
+    280,
+    6.76
+   ],
+   [
+    290,
+    6.77
+   ],
+   [
+    300,
+    6.81
+   ],
+   [
+    310,
+    6.85
+   ],
+   [
+    320,
+    6.88
+   ],
+   [
+    330,
+    6.92
+   ],
+   [
+    340,
+    6.94
+   ],
+   [
+    350,
+    6.94
+   ],
+   [
+    360,
+    6.96
+   ],
+   [
+    370,
+    6.97
+   ],
+   [
+    380,
+    6.97
+   ],
+   [
+    390,
+    6.98
+   ],
+   [
+    400,
+    7
+   ]
+  ],
+  "OSO (choice)": [
+   [
+    0,
+    0
+   ],
+   [
+    10,
+    0.28
+   ],
+   [
+    20,
+    1.04
+   ],
+   [
+    30,
+    1.18
+   ],
+   [
+    40,
+    1.3
+   ],
+   [
+    50,
+    1.39
+   ],
+   [
+    60,
+    1.59
+   ],
+   [
+    70,
+    1.81
+   ],
+   [
+    80,
+    1.99
+   ],
+   [
+    90,
+    2.1
+   ],
+   [
+    100,
+    2.23
+   ],
+   [
+    110,
+    2.36
+   ],
+   [
+    120,
+    2.45
+   ],
+   [
+    130,
+    2.57
+   ],
+   [
+    140,
+    2.7
+   ],
+   [
+    150,
+    2.85
+   ],
+   [
+    160,
+    2.97
+   ],
+   [
+    170,
+    3.02
+   ],
+   [
+    180,
+    3.17
+   ],
+   [
+    190,
+    3.32
+   ],
+   [
+    200,
+    3.39
+   ],
+   [
+    210,
+    3.59
+   ],
+   [
+    220,
+    3.69
+   ],
+   [
+    230,
+    3.83
+   ],
+   [
+    240,
+    3.94
+   ],
+   [
+    250,
+    4.04
+   ],
+   [
+    260,
+    4.19
+   ],
+   [
+    270,
+    4.25
+   ],
+   [
+    280,
+    4.33
+   ],
+   [
+    290,
+    4.41
+   ],
+   [
+    300,
+    4.46
+   ],
+   [
+    310,
+    4.5
+   ],
+   [
+    320,
+    4.55
+   ],
+   [
+    330,
+    4.65
+   ],
+   [
+    340,
+    4.75
+   ],
+   [
+    350,
+    4.86
+   ],
+   [
+    360,
+    4.95
+   ],
+   [
+    370,
+    5.13
+   ],
+   [
+    380,
+    5.15
+   ],
+   [
+    390,
+    5.18
+   ],
+   [
+    400,
+    5.23
+   ]
+  ]
+ },
+ "world": {
+  "results": 42,
+  "levels": 7,
+  "targets": 8,
+  "deadEnds": 6
+ }
+}
