@@ -47,6 +47,9 @@ export interface Output {
   config: unknown;
   table: Record<string, string | number>[];
   runs: Record<string, unknown>[];
+  /** The expanded rows and every run's full result, for reports (not written by --save). */
+  rows: Row[];
+  results: RunResult[][];
 }
 
 const SPEC_KEYS = ['id', 'title', 'description', 'seeds', 'firstSeed', 'scenario', 'set', 'factors', 'patches', 'exclude', 'columns', 'analysis'];
@@ -156,5 +159,5 @@ export function runExperiment(spec: ExperimentSpec, seeds = spec.seeds): Output 
     }));
   }
   const base = loadScenario(spec.scenario ?? null, spec.set ?? {});
-  return { config: { experiment: spec, base, rows: rows.map((r) => ({ labels: r.labels, overrides: r.patch })) }, table, runs };
+  return { config: { experiment: spec, base, rows: rows.map((r) => ({ labels: r.labels, overrides: r.patch })) }, table, runs, rows, results };
 }

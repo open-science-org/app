@@ -15,6 +15,22 @@ What makes this instantiation the simulation:
 
 Traditional research and OSO are two settings of the same rules.
 
+## Start here: a problem space and its report
+
+To ask "would OSO beat traditional research in *my* field?", describe the field and read the report:
+
+```sh
+npm run sim -- spaces                                # the problem spaces so far
+npm run sim -- new "protein design: from folds to binders to enzymes" --report
+npm run sim -- report drug-discovery                 # the canonical report for one space
+npm run sim -- report all                            # every space, plus the index
+npm run sim -- check my-space.yaml                   # validate a hand-written space
+```
+
+- **A problem space** ([spaces/](spaces/)) is one YAML file: a title, a plain-language description, a glossary (what a result, a target and an attempt mean in this field), and scenario overrides. Copy [drug-discovery.yaml](spaces/drug-discovery.yaml) to write one by hand; small fields with a known structure can list their results directly with the `graph` world.
+- **`new`** asks Claude (`claude-opus-5-5`, adaptive thinking) to write the space from your description. The file is validated and test-run; errors go back to the model to fix, up to three times. The budget is then calibrated so OSO solves about 90% of the targets: hard, not hopeless. It needs `ANTHROPIC_API_KEY`. If the model declines, the API retries on a fallback model (server-side fallbacks, on by default).
+- **`report`** runs the same experiments on every space ([battery.ts](battery.ts)) and writes `reports/<id>/report.md` with the same sections, always: a headline verdict; the space and its research tree; progress for the money; the six settings; whether flow-back makes agents share; robustness when sharing is costly or wrong; the limits; how to reproduce. Figures are in `figures/`, every number in `data.json`, and [reports/README.md](reports/README.md) indexes all spaces.
+
 **What it is for.** It checks the mechanics, finds which parameters matter, finds failure modes, and designs the experiment with real LLM agents. It is **not** evidence that OSO works in the real world; see [section 6](#6-what-this-simulation-can-and-cannot-show).
 
 ```sh
@@ -499,7 +515,7 @@ What it is good for:
 | `experiments/*.yaml` | The experiments |
 | `config.ts` | Scenario types, loading, merging, dotted paths, validation |
 | `registry.ts` | Plugin registries |
-| `world.ts` | World generators (`layered`, `chain`, `file`), waterfall shares, attribution value S |
+| `world.ts` | World generators (`layered`, `chain`, `graph`, `file`), waterfall shares, attribution value S |
 | `agents.ts` | Agents from archetypes |
 | `oracles.ts` | Success oracles |
 | `deciders.ts` | Deciders: the formula agent and the random baseline |
@@ -511,6 +527,11 @@ What it is good for:
 | `cli.ts` | Command line; `--save` logs results |
 | `draw-world.ts` | Draws one world as an SVG |
 | `rng.ts` | Seeded xoshiro128\*\* random numbers |
+| `spaces/*.yaml`, `spaces.ts` | Problem spaces; loading, validation, budget calibration |
+| `new-space.ts` | `new`: Claude writes a space; validate, retry, calibrate |
+| `battery.ts` | The canonical experiments every report runs |
+| `report.ts`, `figures.ts` | The canonical report, its index, and its SVG charts |
+| `reports/` | One report per space, and the index |
 | `settings.ts`, `experiments.ts` | Compatibility shims for the old API; can be deleted |
 | `sim.test.ts` | Tests |
 | `results/` | Saved results: per experiment `summary.md`, `config.json` (every parameter, the commit), `runs.jsonl` (one line per run); `LOG.md` lists every saved run |
@@ -523,4 +544,5 @@ The tests (`npm test`) check:
 - that payouts equal mints plus solved bounties;
 - both predictions of the model doc on fixed seeds;
 - the configuration layer: validation errors, component replacement, worlds from files, experiment expansion, and the delayed visibility rule;
-- the plugins: a learning oracle reaches deeper than chance, and deciders can differ by archetype.
+- the plugins: a learning oracle reaches deeper than chance, and deciders can differ by archetype;
+- problem spaces: every space loads, bad spaces are rejected with usable messages, graph worlds derive levels, the generator sends errors back until the file is valid (with a stub model), and every report has the canonical sections and files.

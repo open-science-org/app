@@ -6,8 +6,14 @@
 //     --set path=value override any scenario setting for every row (repeatable; value is JSON or text)
 //     --save           write sim/results/<id>/ and add a line to sim/results/LOG.md
 //   npm run sim -- plugins                          list every plugin: worlds, oracles, deciders, rules, columns
+//
+// Problem spaces (sim/spaces/) and their canonical reports (sim/reports/):
+//   npm run sim -- spaces                           list problem spaces
+//   npm run sim -- new "<description>" [--report]   write a space with Claude, check it, calibrate its budget
+//   npm run sim -- check <space>                    validate a space file and test-run it
+//   npm run sim -- report <space | all> [--seeds N] run the canonical experiments and write the report
 import { execSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadExperiment, runExperiment, analyses, type ExperimentSpec, type Output } from './experiment.ts';
 import { deciders } from './deciders.ts';
@@ -15,6 +21,9 @@ import { COLUMNS } from './measures.ts';
 import { oracles } from './oracles.ts';
 import { allocations, policies, visibilities } from './rules.ts';
 import { worlds } from './world.ts';
+import { buildReport, writeIndex } from './report.ts';
+import { claudeComplete, generateSpace, checkSpace } from './new-space.ts';
+import { loadSpace, spaceIds, spaceToYaml } from './spaces.ts';
 
 const args = process.argv.slice(2);
 const save = args.includes('--save');
@@ -34,6 +43,53 @@ const simDir = new URL('.', import.meta.url).pathname;
 const resultsDir = join(simDir, 'results');
 const experimentIds = readdirSync(join(simDir, 'experiments')).filter((f) => f.endsWith('.yaml')).map((f) => f.slice(0, -5)).sort();
 
+const second = args.filter((a, i) => !a.startsWith('--') && !skip.has(i))[1];
+
+if (target === 'spaces') {
+  console.log('Problem spaces (sim/spaces/):');
+  for (const id of spaceIds()) {
+    const s = loadSpace(id);
+    console.log(`  ${id.padEnd(20)} ${s.spec.title}: ${s.spec.summary}`);
+  }
+  process.exit(0);
+}
+
+if (target === 'check') {
+  if (!second) throw new Error('usage: npm run sim -- check <space or file.yaml>');
+  const path = second.includes('/') || second.endsWith('.yaml') ? second : join(simDir, 'spaces', `${second}.yaml`);
+  const space = checkSpace(readFileSync(path, 'utf8'));
+  console.log(`${space.spec.id}: valid, and a test run works.`);
+  process.exit(0);
+}
+
+if (target === 'report') {
+  if (!second) throw new Error('usage: npm run sim -- report <space | all> [--seeds N]');
+  const ids = second === 'all' ? spaceIds() : [second];
+  for (const id of ids) {
+    console.log(`Report for ${id}:`);
+    const h = buildReport(loadSpace(id), seeds ?? 100, console.log);
+    console.log(`  ${h.verdict}: level ${h.oso.frontier.toFixed(1)} (OSO) vs ${h.traditional.frontier.toFixed(1)} (traditional) of ${h.maxLevel}; written to sim/reports/${id}/report.md`);
+  }
+  writeIndex();
+  process.exit(0);
+}
+
+if (target === 'new') {
+  if (!second) throw new Error('usage: npm run sim -- new "<description of the field>" [--report] [--seeds N]');
+  const space = await generateSpace(second, claudeComplete(), { log: console.log });
+  const path = join(simDir, 'spaces', `${space.spec.id}.yaml`);
+  if (existsSync(path)) throw new Error(`sim/spaces/${space.spec.id}.yaml already exists; rename the generated id or remove the old file`);
+  writeFileSync(path, spaceToYaml(space.spec));
+  console.log(`Wrote sim/spaces/${space.spec.id}.yaml: ${space.spec.title}. Budget X = ${space.scenario.budget.X}.`);
+  if (args.includes('--report')) {
+    const h = buildReport(space, seeds ?? 100, console.log);
+    console.log(`  ${h.verdict}; written to sim/reports/${space.spec.id}/report.md`);
+  } else {
+    console.log(`Next: npm run sim -- report ${space.spec.id}`);
+  }
+  process.exit(0);
+}
+
 if (target === 'plugins') {
   for (const [name, reg] of [['World generators (world.kind)', worlds], ['Success oracles (success.oracle.kind)', oracles],
     ['Deciders (behaviour.decider.kind, agents.deciders.<archetype>.kind)', deciders],
@@ -48,7 +104,7 @@ if (target === 'plugins') {
 }
 
 if (!target) {
-  console.log('Usage: npm run sim -- <experiment | file.yaml | all> [--seeds N] [--set path=value] [--save]\n       npm run sim -- plugins\n\nExperiments (sim/experiments/):');
+  console.log('Usage: npm run sim -- <experiment | file.yaml | all> [--seeds N] [--set path=value] [--save]\n       npm run sim -- plugins\n       npm run sim -- spaces | new "<description>" [--report] | check <space> | report <space | all> [--seeds N]\n\nExperiments (sim/experiments/):');
   for (const id of experimentIds) {
     const e = loadExperiment(id);
     console.log(`  ${id.padEnd(12)} ${e.title} (${e.seeds} seeds)`);

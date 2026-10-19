@@ -1,0 +1,33 @@
+id: drug-discovery
+title: Early-stage drug discovery
+summary: Five stages from biology to a development candidate, in three disease areas, with three candidates as prizes.
+description: >-
+  Early-stage drug discovery. Validated biology (a disease mechanism) supports target identification;
+  targets support screening assays; assays find hits; hits are optimized into leads; and a lead with
+  enough evidence becomes a development candidate. Each stage is much harder than the one before, and
+  many hits and leads go nowhere. Three disease areas (oncology, immunology, neuroscience) share some
+  early biology. Labs either publish each step as they go or keep it until they have a candidate.
+glossary:
+  result: a validated piece of evidence (mechanism, target, assay, hit or lead)
+  target: a development candidate, worth a large bounty
+  attempt: one experimental campaign
+  area: a disease area
+  agent: a lab
+areas: [oncology, immunology, neuroscience]
+scenario:
+  world:
+    kind: layered
+    levels: 6
+    width: 9
+    maxPrereqs: 2
+    skipProb: 0.1
+    areas: 3
+    areaStickiness: 0.85
+    targets:
+      - { level: 6, count: 3 }
+    bountyBase: 2
+    bountyGrowth: 3
+  success: { p0: 0.6, eta: 0.45 }
+  measures: { targetLevel: 5 }
+notes: Stage difficulties and bounties are illustrative, not industry figures.
+source: written by hand as an example of a new problem space

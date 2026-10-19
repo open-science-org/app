@@ -1,0 +1,45 @@
+id: solid-state-battery
+title: A solid-state battery
+summary: Twenty results from electrolyte chemistry to a working cell, written out by hand; two prizes.
+description: >-
+  Building a solid-state lithium battery. Three lines of work run in parallel: the solid
+  electrolyte (finding a conducting material, making it stable and making it thin), the
+  interfaces (stopping dendrites and keeping contact as the cell breathes), and manufacturing
+  (making layers at scale). A working laboratory cell needs results from all three; a cell that
+  survives a thousand cycles needs more. Some promising lines (a polymer electrolyte, a coating
+  that never scales) lead nowhere.
+glossary:
+  result: a demonstrated material property or process step
+  target: a cell that meets a performance milestone
+  attempt: one round of synthesis and testing
+  area: a line of work
+  agent: a lab or startup
+areas: [electrolyte, interfaces, manufacturing]
+scenario:
+  world:
+    kind: graph
+    nodes:
+      - { id: sulfide-conductor, area: 0 }
+      - { id: oxide-conductor, area: 0 }
+      - { id: polymer-electrolyte, area: 0 }
+      - { id: air-stable-sulfide, prereqs: [sulfide-conductor], area: 0 }
+      - { id: thin-separator, prereqs: [oxide-conductor], area: 0 }
+      - { id: polymer-at-room-temperature, prereqs: [polymer-electrolyte], area: 0, p: 0.02 }
+      - { id: lithium-wetting, area: 1 }
+      - { id: interlayer-coating, prereqs: [lithium-wetting], area: 1 }
+      - { id: dendrite-suppression, prereqs: [interlayer-coating, air-stable-sulfide], area: 1 }
+      - { id: stack-pressure-control, prereqs: [lithium-wetting], area: 1 }
+      - { id: contact-under-cycling, prereqs: [stack-pressure-control, dendrite-suppression], area: 1 }
+      - { id: dry-film-process, area: 2 }
+      - { id: coating-at-scale, prereqs: [interlayer-coating], area: 2 }
+      - { id: layer-lamination, prereqs: [dry-film-process, thin-separator], area: 2 }
+      - { id: pouch-assembly, prereqs: [layer-lamination], area: 2 }
+      - { id: lab-cell, prereqs: [dendrite-suppression, layer-lamination], bounty: 100, area: 1 }
+      - { id: high-rate-cell, prereqs: [lab-cell, polymer-at-room-temperature], area: 1 }
+      - { id: thousand-cycle-cell, prereqs: [lab-cell, contact-under-cycling, pouch-assembly], bounty: 400, area: 1 }
+      - { id: cathode-compatibility, prereqs: [air-stable-sulfide], area: 0 }
+      - { id: recycling-route, prereqs: [pouch-assembly], area: 2 }
+  success: { p0: 0.5, eta: 0.5 }
+  measures: { targetLevel: 5 }
+notes: The structure is a simplified sketch, and the success chances follow the default model by depth; neither is from the battery literature.
+source: written by hand as an example of a space listed result by result (the graph world)

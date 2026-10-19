@@ -150,39 +150,65 @@ worlds.register<{ length: number; bounty: number }>('chain', {
   },
 });
 
-interface FileNode {
+/** One result in a world given as a list (worlds `graph` and `file`). */
+export interface NodeSpec {
   id: string;
+  /** Ids of the results it builds on; they must appear earlier in the list. */
   prereqs?: string[];
   /** Success chance per attempt; if absent, taken from the success model by level. */
   p?: number;
+  /** Area index, from 0. */
   area?: number;
   /** A bounty makes the result a target. */
   bounty?: number;
 }
 
+/** Builds a world from a list of results. Levels are derived from prerequisites. */
+export function worldFromNodes(nodes: NodeSpec[], success: Scenario['success'], where: string): World {
+  if (!Array.isArray(nodes) || nodes.length === 0) throw new Error(`${where}: needs a non-empty list of nodes`);
+  const index = new Map<string, number>();
+  nodes.forEach((nd, i) => {
+    if (typeof nd.id !== 'string' || !nd.id) throw new Error(`${where}: node ${i} needs an "id"`);
+    if (index.has(nd.id)) throw new Error(`${where}: duplicate id "${nd.id}"`);
+    index.set(nd.id, i);
+  });
+  const prereqs = nodes.map((nd, i) => (nd.prereqs ?? []).map((id) => {
+    const j = index.get(id);
+    if (j === undefined) throw new Error(`${where}: ${nd.id} builds on unknown result "${id}"`);
+    if (j >= i) throw new Error(`${where}: ${nd.id} builds on "${id}", which must be listed before it`);
+    return j;
+  }).sort((a, b) => a - b));
+  const level: number[] = [];
+  prereqs.forEach((ps) => level.push(1 + Math.max(0, ...ps.map((j) => level[j]))));
+  for (const nd of nodes) {
+    if (nd.p !== undefined && !(nd.p > 0 && nd.p <= 1)) throw new Error(`${where}: ${nd.id} has p = ${nd.p}; it must be in (0, 1]`);
+    if (nd.bounty !== undefined && !(nd.bounty >= 0)) throw new Error(`${where}: ${nd.id} has a negative bounty`);
+  }
+  const world = finishWorld({
+    level,
+    area: nodes.map((nd) => nd.area ?? 0),
+    p: nodes.map((nd, r) => nd.p ?? success.p0 * success.eta ** (level[r] - 1)),
+    prereqs,
+    bounty: nodes.map((nd) => nd.bounty ?? 0),
+    names: nodes.map((nd) => nd.id),
+  });
+  if (!world.targets.length) throw new Error(`${where}: no result has a bounty, so there are no targets`);
+  return world;
+}
+
+worlds.register<{ nodes: NodeSpec[]; areas: number }>('graph', {
+  description: 'A DAG written in the scenario: nodes: [{ id, prereqs?, p?, area?, bounty? }], each after the results it builds on',
+  defaults: { nodes: [], areas: 1 },
+  create: ({ nodes }) => (success) => worldFromNodes(nodes, success, 'world "graph"'),
+});
+
 worlds.register<{ path: string; areas: number }>('file', {
-  description: 'A DAG read from a JSON file: { nodes: [{ id, prereqs?, p?, area?, bounty? }] }, prerequisites listed first',
+  description: 'A DAG read from a JSON file: { nodes: [{ id, prereqs?, p?, area?, bounty? }] }, each after the results it builds on',
   defaults: { path: '', areas: 1 },
   create: ({ path }) => (success) => {
     if (!path) throw new Error('world "file" needs a path');
     const full = isAbsolute(path) ? path : join(new URL('.', import.meta.url).pathname, path);
-    const nodes = (JSON.parse(readFileSync(full, 'utf8')) as { nodes: FileNode[] }).nodes;
-    const index = new Map(nodes.map((nd, i) => [nd.id, i]));
-    const prereqs = nodes.map((nd) => (nd.prereqs ?? []).map((id) => {
-      const j = index.get(id);
-      if (j === undefined) throw new Error(`world file: ${nd.id} builds on unknown result ${id}`);
-      return j;
-    }).sort((a, b) => a - b));
-    const level: number[] = [];
-    prereqs.forEach((ps, r) => level.push(1 + Math.max(0, ...ps.map((j) => level[j] ?? 0))));
-    return finishWorld({
-      level,
-      area: nodes.map((nd) => nd.area ?? 0),
-      p: nodes.map((nd, r) => nd.p ?? success.p0 * success.eta ** (level[r] - 1)),
-      prereqs,
-      bounty: nodes.map((nd) => nd.bounty ?? 0),
-      names: nodes.map((nd) => nd.id),
-    });
+    return worldFromNodes((JSON.parse(readFileSync(full, 'utf8')) as { nodes: NodeSpec[] }).nodes, success, `world file ${path}`);
   },
 });
 
